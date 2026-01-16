@@ -4,9 +4,22 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
-Env.Load();
+if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+{
+    Env.Load();
+}
+
+var urls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+var port = Environment.GetEnvironmentVariable("PORT");
+
+if (string.IsNullOrWhiteSpace(urls))
+{
+    var p = string.IsNullOrWhiteSpace(port) ? "5014" : port;
+    Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"http://0.0.0.0:{p}");
+}
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 builder.Services.AddOpenApi();
 
@@ -27,6 +40,7 @@ builder.Services
 builder.Services.AddAuthentication()
     .AddBearerToken(IdentityConstants.BearerScheme);
 
+builder.Services.AddControllers();
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
@@ -48,26 +62,13 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.MapIdentityApi<ApplicationUser>();
 
-app.MapGet("/health", () => new { status = "healthy" });
+app.MapGroup("/auth")
+   .MapIdentityApi<ApplicationUser>()
+   .WithTags("Auth");
 
-app.MapGet("/weatherforecast", () =>
-{
-    var summaries = new[]
-    {
-        "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-    };
 
-    return Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast(
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        )
-    ).ToArray();
-})
-.WithName("GetWeatherForecast");
+
 
 if (app.Environment.IsDevelopment())
 {
@@ -85,9 +86,8 @@ app.Lifetime.ApplicationStarted.Register(() =>
         Console.WriteLine($"Scalar: {first}/");
 });
 
+app.MapControllers();
+
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+
