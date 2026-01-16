@@ -1,0 +1,17 @@
+{
+  "name": "humanbenchmark",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently -n api,web -c auto \"dotnet run --project apps/api/Api\" \"npm --prefix apps/web/web run dev\"",
+    "dev:api": "dotnet run --project apps/api/Api",
+    "dev:web": "npm --prefix apps/web/web run dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
