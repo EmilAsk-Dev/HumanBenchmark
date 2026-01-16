@@ -4,14 +4,20 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently -n api,web -c auto \"dotnet run --project apps/api/Api\" \"npm --prefix apps/web/web run dev\"",
-    "dev:api": "dotnet run --project apps/api/Api",
-    "dev:web": "npm --prefix apps/web/web run dev"
+    "dev": "dotenv -e .env -- concurrently --keepalive -n api,web,open -c auto \"dotnet run --project apps/Api\" \"npm --prefix apps/Web run dev\" \"node ./scripts/open-dev.mjs\"",
+    "dev:api": "dotenv -e .env -- concurrently --keepalive -n api,open -c auto \"dotnet run --project apps/Api\" \"node ./scripts/open-api.mjs\"",
+    "dev:web": "dotenv -e .env -- concurrently --keepalive -n web,open -c auto \"npm --prefix apps/Web run dev\" \"node ./scripts/open-web.mjs\"",
+    "install:all": "npm install && npm --prefix apps/Web install && dotnet restore apps/Api",
+    "db:add": "dotenv -e .env -- dotnet ef migrations add --project apps/Api --startup-project apps/Api",
+    "db:update": "dotenv -e .env -- dotnet ef database update --project apps/Api --startup-project apps/Api",
+    "db:remove": "dotenv -e .env -- dotnet ef migrations remove --project apps/Api --startup-project apps/Api"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "dotenv-cli": "^11.0.0",
+    "open": "^11.0.0"
   }
 }
