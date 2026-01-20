@@ -17,7 +17,7 @@ apps/Api/**/Migrations/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
-
+apps/Api/out/
 # Mono auto generated files
 mono_crash.*
 
