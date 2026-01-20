@@ -10,7 +10,8 @@
     "install:all": "npm install && npm --prefix apps/Web install && dotnet restore apps/Api",
     "db:add": "dotenv -e .env -- dotnet ef migrations add --project apps/Api --startup-project apps/Api",
     "db:update": "dotenv -e .env -- dotnet ef database update --project apps/Api --startup-project apps/Api",
-    "db:remove": "dotenv -e .env -- dotnet ef migrations remove --project apps/Api --startup-project apps/Api"
+    "db:remove": "dotenv -e .env -- dotnet ef migrations remove --project apps/Api --startup-project apps/Api",
+    "db:drop": "dotenv -e .env -- dotnet ef database drop --project apps/Api --startup-project apps/Api"
   },
   "keywords": [],
   "author": "",
