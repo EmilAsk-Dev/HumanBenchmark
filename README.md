@@ -1,6 +1,7 @@
 # HumanBenchmark
 
 Monorepo med:
+
 - **API**: ASP.NET Core (.NET 10) i `apps/Api`
 - **Webb**: React + Vite i `apps/Web`
 
@@ -15,12 +16,11 @@ Installera följande innan du börjar:
 - **.NET SDK 10**  
   Kontrollera:
   dotnet --version
-  Har du en tidigare version än 10.0.100 Installera 
+  Har du en tidigare version än 10.0.100 Installera
   -> https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-10.0.101-windows-x64-installer
 
-
-
 ### 2) Skapa `.env` i repo-roten (obligatoriskt)
+
 Skapa filen `HumanBenchmark/.env`.
 
 Kopiera detta och lägg det i .env filen:
@@ -32,6 +32,7 @@ VITE_API_BASE_URL=http://localhost:5014
 ASPNETCORE_ENVIRONMENT=Development
 ASPNETCORE_URLS=http://localhost:5014
 CONNECTION_STRING=Server=(localdb)\MSSQLLocalDB;Database=HumanBenchmarkDb;Trusted_Connection=True;TrustServerCertificate=True;
+
 ---
 
 ## Installera beroenden
@@ -43,6 +44,7 @@ npm run install:all
 ```
 
 Det scriptet gör:
+
 - `npm install` (repo-roten)
 - `npm --prefix apps/Web install` (React/Vite)
 - `dotnet restore apps/Api` (API)
@@ -52,21 +54,25 @@ Det scriptet gör:
 ## Starta projektet
 
 ### Starta API + Webb (öppnar båda i webbläsaren)
+
 ```bash
 npm run dev
 ```
 
 Startar:
+
 - API: `dotnet run --project apps/Api`
 - Webb: `npm --prefix apps/Web run dev`
 - Öppnar web + api via `scripts/open-dev.mjs`
 
 ### Starta bara API (öppnar API)
+
 ```bash
 npm run dev:api
 ```
 
 ### Starta bara Webb (öppnar webb)
+
 ```bash
 npm run dev:web
 ```
@@ -88,6 +94,7 @@ Default enligt `.env`:
 > Alla kommandon körs från repo-roten och laddar `.env` automatiskt.
 
 ### Skapa en migration
+
 Du anger namnet efter `--`:
 
 ```bash
@@ -95,16 +102,19 @@ npm run db:add -- InitIdentity
 ```
 
 Exempel:
+
 ```bash
 npm run db:add -- AddScores
 ```
 
 ### Uppdatera databasen (apply migrations)
+
 ```bash
 npm run db:update
 ```
 
 ### Ta bort senaste migrationen
+
 ```bash
 npm run db:remove
 ```

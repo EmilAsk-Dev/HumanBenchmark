@@ -24,10 +24,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 
 
-var connectionString =
-    Environment.GetEnvironmentVariable("CONNECTION_STRING")
-    ?? throw new InvalidOperationException("Missing env var CONNECTION_STRING (set it in .env).");
+var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
 
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+}
 
 builder.Services.AddDbContext<ApplicationDbContext>(opt => opt.UseSqlServer(connectionString));
 
