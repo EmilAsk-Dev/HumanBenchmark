@@ -4,6 +4,7 @@ Monorepo med:
 
 - **API**: ASP.NET Core (.NET 10) i `apps/Api`
 - **Webb**: React + Vite i `apps/Web`
+  för att köra med prod kör I root "dotnet publish .\apps\Api -c Release -o .\apps\Api\out"
 
 Projektet är byggt för att du ska kunna köra **allt från repo-roten** med npm-scripts.
 
