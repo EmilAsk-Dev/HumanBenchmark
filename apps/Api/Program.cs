@@ -22,6 +22,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 
 builder.Services.AddOpenApi();
+builder.Services.AddScoped<Api.Features.Attempts.Services.AttemptWriter>();
+builder.Services.AddScoped<Api.Features.Feed.FeedService>();
+
 
 
 var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
@@ -30,6 +33,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 {
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 }
+
 
 builder.Services.AddDbContext<ApplicationDbContext>(opt => opt.UseSqlServer(connectionString));
 
@@ -75,7 +79,6 @@ app.MapGroup("/auth")
 if (app.Environment.IsDevelopment())
 {
     await DbSeeder.SeedAsync(app.Services);
-    await IdentitySeeder.SeedAsync(app.Services);
 }
 
 app.Lifetime.ApplicationStarted.Register(() =>
