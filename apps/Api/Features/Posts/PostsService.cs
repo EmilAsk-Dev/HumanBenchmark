@@ -86,8 +86,8 @@ public class PostsService
         {
             GameType.Reaction => $"{attempt.Value}ms",
             GameType.Typing => $"{attempt.Value} WPM",
-            GameType.Chimp => $"Level {attempt.Value}",
-            GameType.Sequence => $"Level {attempt.Value}",
+            GameType.ChimpTest => $"Level {attempt.Value}",
+            GameType.SequenceTest => $"Level {attempt.Value}",
             _ => attempt.Value.ToString()
         };
     }

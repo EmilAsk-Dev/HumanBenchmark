@@ -1,5 +1,7 @@
 namespace Api.Domain;
 
+using Api.Data;
+
 public class Post
 {
     public long Id { get; set; }
