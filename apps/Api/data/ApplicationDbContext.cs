@@ -19,6 +19,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<FriendRequest> FriendRequests => Set<FriendRequest>();
     public DbSet<Friendship> Friendships => Set<Friendship>();
 
+    public DbSet<Like> Likes => Set<Like>();
     public DbSet<Post> Posts => Set<Post>();
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -115,14 +116,35 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.Property(x => x.CreatedAt).IsRequired();
 
             e.HasIndex(x => x.AttemptId).IsUnique();
-
             e.HasIndex(x => x.UserId);
-
             e.HasIndex(x => x.CreatedAt);
 
             e.HasOne(x => x.Attempt)
              .WithOne()
              .HasForeignKey<Post>(x => x.AttemptId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.User)
+             .WithMany()
+             .HasForeignKey(x => x.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<Like>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.AttemptId).IsRequired();
+            e.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            e.Property(x => x.CreatedAt).IsRequired();
+
+            e.HasIndex(x => new { x.AttemptId, x.UserId }).IsUnique();
+            e.HasIndex(x => x.AttemptId);
+            e.HasIndex(x => x.UserId);
+
+            e.HasOne(x => x.Attempt)
+             .WithMany()
+             .HasForeignKey(x => x.AttemptId)
              .OnDelete(DeleteBehavior.Cascade);
 
             e.HasOne(x => x.User)
