@@ -19,6 +19,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<FriendRequest> FriendRequests => Set<FriendRequest>();
     public DbSet<Friendship> Friendships => Set<Friendship>();
 
+    public DbSet<Post> Posts => Set<Post>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
@@ -101,6 +103,32 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
             e.HasIndex(x => x.UserAId);
             e.HasIndex(x => x.UserBId);
+        });
+
+        b.Entity<Post>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.AttemptId).IsRequired();
+            e.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            e.Property(x => x.Caption).HasMaxLength(500);
+            e.Property(x => x.CreatedAt).IsRequired();
+
+            e.HasIndex(x => x.AttemptId).IsUnique();
+
+            e.HasIndex(x => x.UserId);
+
+            e.HasIndex(x => x.CreatedAt);
+
+            e.HasOne(x => x.Attempt)
+             .WithOne()
+             .HasForeignKey<Post>(x => x.AttemptId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.User)
+             .WithMany()
+             .HasForeignKey(x => x.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
