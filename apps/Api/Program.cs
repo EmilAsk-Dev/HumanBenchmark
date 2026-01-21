@@ -26,6 +26,7 @@ builder.Services.AddScoped<Api.Features.Attempts.Services.AttemptWriter>();
 builder.Services.AddScoped<Api.Features.Feed.FeedService>();
 builder.Services.AddScoped<Api.Features.Likes.LikesService>();
 builder.Services.AddScoped<Api.Features.Posts.PostsService>();
+builder.Services.AddScoped<Api.Features.Leaderboards.LeaderboardService>();
 
 
 
@@ -40,13 +41,9 @@ if (string.IsNullOrWhiteSpace(connectionString))
 builder.Services.AddDbContext<ApplicationDbContext>(opt => opt.UseSqlServer(connectionString));
 
 builder.Services
-    .AddIdentityCore<ApplicationUser>()
+    .AddIdentityApiEndpoints<ApplicationUser>()
     .AddRoles<IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddApiEndpoints();
-
-builder.Services.AddAuthentication()
-    .AddBearerToken(IdentityConstants.BearerScheme);
+    .AddEntityFrameworkStores<ApplicationDbContext>();
 
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
