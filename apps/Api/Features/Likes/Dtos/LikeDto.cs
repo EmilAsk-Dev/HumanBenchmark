@@ -1,7 +1,8 @@
 namespace Api.Features.Likes.Dtos;
 
 public record LikeDto(
-    long AttemptId,
+    LikeTargetType TargetType,
+    long TargetId,
     int LikeCount,
     bool IsLikedByMe
 );

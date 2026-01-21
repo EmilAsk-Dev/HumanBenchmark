@@ -1,7 +1,7 @@
 namespace Api.Domain;
 
+using System.ComponentModel.DataAnnotations;
 using Api.Data;
-
 public class Post
 {
     public long Id { get; set; }
@@ -15,4 +15,7 @@ public class Post
     public string? Caption { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public ICollection<Comment> Comments { get; set; } = new List<Comment>();
+    public ICollection<Like> Likes { get; set; } = new List<Like>();
 }
