@@ -24,6 +24,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddScoped<Api.Features.Attempts.Services.AttemptWriter>();
 builder.Services.AddScoped<Api.Features.Feed.FeedService>();
+builder.Services.AddScoped<Api.Features.Likes.LikesService>();
 
 
 
