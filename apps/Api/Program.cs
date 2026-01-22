@@ -27,6 +27,7 @@ builder.Services.AddScoped<Api.Features.Feed.FeedService>();
 builder.Services.AddScoped<Api.Features.Likes.LikesService>();
 builder.Services.AddScoped<Api.Features.Posts.PostsService>();
 builder.Services.AddScoped<Api.Features.Leaderboards.LeaderboardService>();
+builder.Services.AddScoped<Api.Features.Users.ProfileService>();
 
 
 

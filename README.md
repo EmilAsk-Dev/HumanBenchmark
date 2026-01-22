@@ -22,14 +22,14 @@ Installera följande innan du börjar:
 
 ### 2) Skapa `.env` i repo-roten (obligatoriskt)
 
-Skapa filen `HumanBenchmark/apps/Api/Api.env`.
+Skapa filen `HumanBenchmark/apps/Api/.env`.
 
 #Api
 ASPNETCORE_ENVIRONMENT=Development
 ASPNETCORE_URLS=http://localhost:5014
 CONNECTION_STRING=Server=(localdb)\MSSQLLocalDB;Database=HumanBenchmarkDb;Trusted_Connection=True;TrustServerCertificate=True;
 
-Skapa filen `HumanBenchmark/apps/Web/Api.env`.
+Skapa filen `HumanBenchmark/apps/Web/.env`.
 
 #Web
 VITE_PORT=5173
