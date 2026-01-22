@@ -54,35 +54,22 @@ public static class DbSeeder
         await EnsureFriendshipAsync(db, alice.Id, bob.Id);
         await EnsureFriendshipAsync(db, bob.Id, clara.Id);
 
-        // 4) Attempts + per-game details
-        // Only seed if empty (keeps it idempotent)
-        var hasAttempts = await db.Attempts.AnyAsync();
-        if (!hasAttempts)
-        {
-            var now = DateTime.UtcNow;
+        // 4) Friend requests (ensure at least 2)
+        await EnsureMinimumFriendRequestsAsync(db, admin.Id, alice.Id, bob.Id, clara.Id);
 
-            // Admin attempts
-            await AddReactionAttemptAsync(db, admin.Id, now.AddMinutes(-60), value: 220, bestMs: 180, avgMs: 220);
-            await AddTypingAttemptAsync(db, admin.Id, now.AddMinutes(-45), value: 78, wpm: 78, accuracy: 96.2m);
-            await AddAttemptAsync(db, admin.Id, GameType.ChimpTest, value: 12, createdAt: now.AddMinutes(-30));
-            await AddAttemptAsync(db, admin.Id, GameType.SequenceTest, value: 10, createdAt: now.AddMinutes(-20));
+        // 5) Attempts + per-game details (ensure at least 2 rows per table)
+        var now = DateTime.UtcNow;
 
-            // Alice attempts
-            await AddReactionAttemptAsync(db, alice.Id, now.AddMinutes(-70), value: 260, bestMs: 210, avgMs: 260);
-            await AddTypingAttemptAsync(db, alice.Id, now.AddMinutes(-50), value: 62, wpm: 62, accuracy: 92.0m);
-            await AddAttemptAsync(db, alice.Id, GameType.ChimpTest, value: 9, createdAt: now.AddMinutes(-35));
+        await EnsureMinimumAttemptsAsync(db, admin.Id, alice.Id, now);
+        await EnsureMinimumReactionDetailsAsync(db, admin.Id, alice.Id, now);
+        await EnsureMinimumTypingDetailsAsync(db, admin.Id, alice.Id, now);
+        await EnsureMinimumChimpDetailsAsync(db, admin.Id, alice.Id, now);
+        await EnsureMinimumSequenceDetailsAsync(db, admin.Id, alice.Id, now);
 
-            // Bob attempts
-            await AddReactionAttemptAsync(db, bob.Id, now.AddMinutes(-80), value: 240, bestMs: 195, avgMs: 240);
-            await AddTypingAttemptAsync(db, bob.Id, now.AddMinutes(-55), value: 85, wpm: 85, accuracy: 97.5m);
-            await AddAttemptAsync(db, bob.Id, GameType.SequenceTest, value: 11, createdAt: now.AddMinutes(-25));
-
-            // Clara attempts
-            await AddAttemptAsync(db, clara.Id, GameType.ChimpTest, value: 8, createdAt: now.AddMinutes(-40));
-            await AddTypingAttemptAsync(db, clara.Id, now.AddMinutes(-15), value: 54, wpm: 54, accuracy: 90.1m);
-
-            await db.SaveChangesAsync();
-        }
+        // 6) Social (posts/comments/likes) (ensure at least 2 rows per table)
+        await EnsureMinimumPostsAsync(db, admin.Id, alice.Id, now);
+        await EnsureMinimumCommentsAsync(db, bob.Id, clara.Id, now);
+        await EnsureMinimumLikesAsync(db, admin.Id, alice.Id, bob.Id, clara.Id, now);
     }
 
     private static async Task<ApplicationUser> EnsureUserAsync(
@@ -139,6 +126,317 @@ public static class DbSeeder
         }
     }
 
+    private static async Task EnsureMinimumFriendRequestsAsync(
+        ApplicationDbContext db,
+        string adminId,
+        string aliceId,
+        string bobId,
+        string claraId)
+    {
+        var existing = await db.FriendRequests.CountAsync();
+        if (existing >= 2) return;
+
+        var candidates = new[]
+        {
+            new Api.Domain.Friends.FriendRequest
+            {
+                FromUserId = aliceId,
+                ToUserId = claraId,
+                Status = Api.Domain.Friends.FriendRequestStatus.Pending,
+                CreatedAt = DateTime.UtcNow.AddDays(-2)
+            },
+            new Api.Domain.Friends.FriendRequest
+            {
+                FromUserId = claraId,
+                ToUserId = adminId,
+                Status = Api.Domain.Friends.FriendRequestStatus.Declined,
+                CreatedAt = DateTime.UtcNow.AddDays(-3),
+                RespondedAt = DateTime.UtcNow.AddDays(-3).AddHours(6)
+            },
+            new Api.Domain.Friends.FriendRequest
+            {
+                FromUserId = bobId,
+                ToUserId = aliceId,
+                Status = Api.Domain.Friends.FriendRequestStatus.Canceled,
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                RespondedAt = DateTime.UtcNow.AddDays(-1).AddHours(2)
+            }
+        };
+
+        foreach (var candidate in candidates)
+        {
+            if (await db.FriendRequests.CountAsync() >= 2) break;
+
+            var exists = await db.FriendRequests.AnyAsync(fr =>
+                fr.FromUserId == candidate.FromUserId &&
+                fr.ToUserId == candidate.ToUserId &&
+                fr.Status == candidate.Status);
+
+            if (!exists)
+            {
+                db.FriendRequests.Add(candidate);
+                await db.SaveChangesAsync();
+            }
+        }
+    }
+
+    private static async Task EnsureMinimumAttemptsAsync(
+        ApplicationDbContext db,
+        string adminId,
+        string aliceId,
+        DateTime now)
+    {
+        var existing = await db.Attempts.CountAsync();
+        if (existing >= 2) return;
+
+        await AddAttemptAsync(db, adminId, GameType.Reaction, value: 220, createdAt: now.AddMinutes(-120));
+        await AddAttemptAsync(db, aliceId, GameType.Typing, value: 65, createdAt: now.AddMinutes(-110));
+    }
+
+    private static async Task EnsureMinimumReactionDetailsAsync(
+        ApplicationDbContext db,
+        string adminId,
+        string aliceId,
+        DateTime now)
+    {
+        var existing = await db.ReactionAttemptDetails.CountAsync();
+        if (existing >= 2) return;
+
+        var needed = 2 - existing;
+        if (needed >= 1)
+            await AddReactionAttemptAsync(db, adminId, now.AddMinutes(-90), value: 220, bestMs: 180, avgMs: 220, attempts: 5);
+        if (needed >= 2)
+            await AddReactionAttemptAsync(db, aliceId, now.AddMinutes(-85), value: 260, bestMs: 210, avgMs: 260, attempts: 5);
+    }
+
+    private static async Task EnsureMinimumTypingDetailsAsync(
+        ApplicationDbContext db,
+        string adminId,
+        string aliceId,
+        DateTime now)
+    {
+        var existing = await db.TypingAttemptDetails.CountAsync();
+        if (existing >= 2) return;
+
+        var needed = 2 - existing;
+        if (needed >= 1)
+            await AddTypingAttemptAsync(db, adminId, now.AddMinutes(-75), value: 78, wpm: 78, accuracy: 96.2m, characters: 310);
+        if (needed >= 2)
+            await AddTypingAttemptAsync(db, aliceId, now.AddMinutes(-70), value: 62, wpm: 62, accuracy: 92.0m, characters: 280);
+    }
+
+    private static async Task EnsureMinimumChimpDetailsAsync(
+        ApplicationDbContext db,
+        string adminId,
+        string aliceId,
+        DateTime now)
+    {
+        var existing = await db.ChimpAttemptDetails.CountAsync();
+        if (existing >= 2) return;
+
+        var needed = 2 - existing;
+        if (needed >= 1)
+            await AddChimpAttemptAsync(db, adminId, now.AddMinutes(-65), value: 12, level: 12, mistakes: 1, timeMs: 42000);
+        if (needed >= 2)
+            await AddChimpAttemptAsync(db, aliceId, now.AddMinutes(-60), value: 9, level: 9, mistakes: 2, timeMs: 51000);
+    }
+
+    private static async Task EnsureMinimumSequenceDetailsAsync(
+        ApplicationDbContext db,
+        string adminId,
+        string aliceId,
+        DateTime now)
+    {
+        var existing = await db.SequenceAttemptDetails.CountAsync();
+        if (existing >= 2) return;
+
+        var needed = 2 - existing;
+        if (needed >= 1)
+            await AddSequenceAttemptAsync(db, adminId, now.AddMinutes(-55), value: 10, level: 10, mistakes: 1, timeMs: 38000);
+        if (needed >= 2)
+            await AddSequenceAttemptAsync(db, aliceId, now.AddMinutes(-50), value: 11, level: 11, mistakes: 0, timeMs: 35000);
+    }
+
+    private static async Task EnsureMinimumPostsAsync(
+        ApplicationDbContext db,
+        string adminId,
+        string aliceId,
+        DateTime now)
+    {
+        var existing = await db.Posts.CountAsync();
+        if (existing >= 2) return;
+
+        var usedAttemptIds = await db.Posts.Select(p => p.AttemptId).ToListAsync();
+
+        var adminAttemptId = await db.Attempts
+            .Where(a => a.UserId == adminId && !usedAttemptIds.Contains(a.Id))
+            .OrderByDescending(a => a.CreatedAt)
+            .Select(a => a.Id)
+            .FirstOrDefaultAsync();
+
+        if (adminAttemptId == 0)
+        {
+            var a = await AddAttemptAsync(db, adminId, GameType.Reaction, value: 230, createdAt: now.AddMinutes(-40));
+            adminAttemptId = a.Id;
+        }
+
+        var aliceAttemptId = await db.Attempts
+            .Where(a => a.UserId == aliceId && !usedAttemptIds.Contains(a.Id) && a.Id != adminAttemptId)
+            .OrderByDescending(a => a.CreatedAt)
+            .Select(a => a.Id)
+            .FirstOrDefaultAsync();
+
+        if (aliceAttemptId == 0)
+        {
+            var a = await AddAttemptAsync(db, aliceId, GameType.Typing, value: 66, createdAt: now.AddMinutes(-35));
+            aliceAttemptId = a.Id;
+        }
+
+        if (await db.Posts.CountAsync() < 2)
+        {
+            db.Posts.Add(new Post
+            {
+                UserId = adminId,
+                AttemptId = adminAttemptId,
+                Caption = "First post: reaction run",
+                CreatedAt = now.AddMinutes(-34)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        if (await db.Posts.CountAsync() < 2)
+        {
+            db.Posts.Add(new Post
+            {
+                UserId = aliceId,
+                AttemptId = aliceAttemptId,
+                Caption = "Typing PB today",
+                CreatedAt = now.AddMinutes(-33)
+            });
+            await db.SaveChangesAsync();
+        }
+    }
+
+    private static async Task EnsureMinimumCommentsAsync(
+        ApplicationDbContext db,
+        string bobId,
+        string claraId,
+        DateTime now)
+    {
+        var existing = await db.Comments.CountAsync();
+        if (existing >= 2) return;
+
+        var posts = await db.Posts.OrderBy(p => p.Id).Select(p => p.Id).ToListAsync();
+        if (posts.Count == 0) return;
+
+        var targetPost1 = posts[0];
+        var targetPost2 = posts.Count > 1 ? posts[1] : posts[0];
+
+        if (await db.Comments.CountAsync() < 2)
+        {
+            db.Comments.Add(new Comment
+            {
+                PostId = targetPost1,
+                UserId = bobId,
+                Content = "Nice run — keep it up.",
+                CreatedAt = now.AddMinutes(-32)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        if (await db.Comments.CountAsync() < 2)
+        {
+            db.Comments.Add(new Comment
+            {
+                PostId = targetPost2,
+                UserId = claraId,
+                Content = "Solid score!",
+                CreatedAt = now.AddMinutes(-31)
+            });
+            await db.SaveChangesAsync();
+        }
+    }
+
+    private static async Task EnsureMinimumLikesAsync(
+        ApplicationDbContext db,
+        string adminId,
+        string aliceId,
+        string bobId,
+        string claraId,
+        DateTime now)
+    {
+        var existing = await db.Likes.CountAsync();
+        if (existing >= 2) return;
+
+        var posts = await db.Posts.OrderBy(p => p.Id).Select(p => p.Id).ToListAsync();
+        var comments = await db.Comments.OrderBy(c => c.Id).Select(c => c.Id).ToListAsync();
+
+        if (posts.Count > 0 && await db.Likes.CountAsync() < 2)
+        {
+            var postId = posts[0];
+            var exists = await db.Likes.AnyAsync(l => l.UserId == bobId && l.PostId == postId);
+            if (!exists)
+            {
+                db.Likes.Add(new Like
+                {
+                    UserId = bobId,
+                    PostId = postId,
+                    CreatedAt = now.AddMinutes(-30)
+                });
+                await db.SaveChangesAsync();
+            }
+        }
+
+        if (comments.Count > 0 && await db.Likes.CountAsync() < 2)
+        {
+            var commentId = comments[0];
+            var exists = await db.Likes.AnyAsync(l => l.UserId == claraId && l.CommentId == commentId);
+            if (!exists)
+            {
+                db.Likes.Add(new Like
+                {
+                    UserId = claraId,
+                    CommentId = commentId,
+                    CreatedAt = now.AddMinutes(-29)
+                });
+                await db.SaveChangesAsync();
+            }
+        }
+
+        // Fallback if DB already had duplicates that prevented inserts above.
+        if (await db.Likes.CountAsync() < 2 && posts.Count > 0)
+        {
+            var postId = posts[^1];
+            var exists = await db.Likes.AnyAsync(l => l.UserId == aliceId && l.PostId == postId);
+            if (!exists)
+            {
+                db.Likes.Add(new Like
+                {
+                    UserId = aliceId,
+                    PostId = postId,
+                    CreatedAt = now.AddMinutes(-28)
+                });
+                await db.SaveChangesAsync();
+            }
+        }
+
+        if (await db.Likes.CountAsync() < 2 && comments.Count > 0)
+        {
+            var commentId = comments[^1];
+            var exists = await db.Likes.AnyAsync(l => l.UserId == adminId && l.CommentId == commentId);
+            if (!exists)
+            {
+                db.Likes.Add(new Like
+                {
+                    UserId = adminId,
+                    CommentId = commentId,
+                    CreatedAt = now.AddMinutes(-27)
+                });
+                await db.SaveChangesAsync();
+            }
+        }
+    }
+
     private static async Task<Attempt> AddAttemptAsync(
         ApplicationDbContext db,
         string userId,
@@ -165,7 +463,8 @@ public static class DbSeeder
         DateTime createdAt,
         int value,
         int bestMs,
-        int avgMs)
+        int avgMs,
+        int attempts)
     {
         var attempt = await AddAttemptAsync(db, userId, GameType.Reaction, value, createdAt);
 
@@ -173,7 +472,8 @@ public static class DbSeeder
         {
             AttemptId = attempt.Id,
             BestMs = bestMs,
-            AvgMs = avgMs
+            AvgMs = avgMs,
+            Attempts = attempts
         });
 
         await db.SaveChangesAsync();
@@ -185,7 +485,8 @@ public static class DbSeeder
         DateTime createdAt,
         int value,
         int wpm,
-        decimal accuracy)
+        decimal accuracy,
+        int characters)
     {
         var attempt = await AddAttemptAsync(db, userId, GameType.Typing, value, createdAt);
 
@@ -193,7 +494,52 @@ public static class DbSeeder
         {
             AttemptId = attempt.Id,
             Wpm = wpm,
-            Accuracy = accuracy
+            Accuracy = accuracy,
+            Characters = characters
+        });
+
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task AddChimpAttemptAsync(
+        ApplicationDbContext db,
+        string userId,
+        DateTime createdAt,
+        int value,
+        int level,
+        int mistakes,
+        int timeMs)
+    {
+        var attempt = await AddAttemptAsync(db, userId, GameType.ChimpTest, value, createdAt);
+
+        db.ChimpAttemptDetails.Add(new ChimpAttemptDetails
+        {
+            AttemptId = attempt.Id,
+            Level = level,
+            Mistakes = mistakes,
+            TimeMs = timeMs
+        });
+
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task AddSequenceAttemptAsync(
+        ApplicationDbContext db,
+        string userId,
+        DateTime createdAt,
+        int value,
+        int level,
+        int mistakes,
+        int timeMs)
+    {
+        var attempt = await AddAttemptAsync(db, userId, GameType.SequenceTest, value, createdAt);
+
+        db.SequenceAttemptDetails.Add(new SequenceAttemptDetails
+        {
+            AttemptId = attempt.Id,
+            Level = level,
+            Mistakes = mistakes,
+            TimeMs = timeMs
         });
 
         await db.SaveChangesAsync();

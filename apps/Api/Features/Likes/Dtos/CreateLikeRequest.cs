@@ -1,5 +1,6 @@
 namespace Api.Features.Likes.Dtos;
 
 public record CreateLikeRequest(
-    long AttemptId
+    LikeTargetType TargetType,
+    long TargetId
 );

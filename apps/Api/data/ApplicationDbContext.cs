@@ -22,6 +22,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Like> Likes => Set<Like>();
     public DbSet<Post> Posts => Set<Post>();
 
+    public DbSet<Comment> Comments => Set<Comment>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
@@ -110,47 +112,70 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             e.HasKey(x => x.Id);
 
-            e.Property(x => x.AttemptId).IsRequired();
             e.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            e.Property(x => x.AttemptId).IsRequired();
             e.Property(x => x.Caption).HasMaxLength(500);
             e.Property(x => x.CreatedAt).IsRequired();
 
-            e.HasIndex(x => x.AttemptId).IsUnique();
-            e.HasIndex(x => x.UserId);
-            e.HasIndex(x => x.CreatedAt);
-
-            e.HasOne(x => x.Attempt)
-             .WithOne()
-             .HasForeignKey<Post>(x => x.AttemptId)
-             .OnDelete(DeleteBehavior.Cascade);
-
             e.HasOne(x => x.User)
-             .WithMany()
-             .HasForeignKey(x => x.UserId)
-             .OnDelete(DeleteBehavior.Cascade);
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            e.HasMany(x => x.Comments)
+                .WithOne(x => x.Post)
+                .HasForeignKey(x => x.PostId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasMany(x => x.Likes)
+                .WithOne(x => x.Post)
+                .HasForeignKey(x => x.PostId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         b.Entity<Like>(e =>
         {
             e.HasKey(x => x.Id);
 
-            e.Property(x => x.AttemptId).IsRequired();
             e.Property(x => x.UserId).HasMaxLength(450).IsRequired();
             e.Property(x => x.CreatedAt).IsRequired();
 
-            e.HasIndex(x => new { x.AttemptId, x.UserId }).IsUnique();
-            e.HasIndex(x => x.AttemptId);
-            e.HasIndex(x => x.UserId);
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
 
-            e.HasOne(x => x.Attempt)
-             .WithMany()
-             .HasForeignKey(x => x.AttemptId)
-             .OnDelete(DeleteBehavior.Cascade);
+            e.ToTable(t => t.HasCheckConstraint(
+                "CK_Likes_ExactlyOneTarget",
+                "([PostId] IS NOT NULL AND [CommentId] IS NULL) OR ([PostId] IS NULL AND [CommentId] IS NOT NULL)"
+            ));
+
+            e.HasIndex(x => new { x.UserId, x.PostId })
+                .IsUnique()
+                .HasFilter("[PostId] IS NOT NULL");
+
+            e.HasIndex(x => new { x.UserId, x.CommentId })
+                .IsUnique()
+                .HasFilter("[CommentId] IS NOT NULL");
+        });
+
+        b.Entity<Comment>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            e.Property(x => x.Content).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.CreatedAt).IsRequired();
 
             e.HasOne(x => x.User)
-             .WithMany()
-             .HasForeignKey(x => x.UserId)
-             .OnDelete(DeleteBehavior.Cascade);
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            e.HasMany(x => x.Likes)
+                .WithOne(x => x.Comment)
+                .HasForeignKey(x => x.CommentId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
