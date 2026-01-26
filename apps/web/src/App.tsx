@@ -13,30 +13,36 @@ import ChimpPage from "./pages/tests/ChimpPage";
 import TypingPage from "./pages/tests/TypingPage";
 import SequencePage from "./pages/tests/SequencePage";
 import NotFound from "./pages/NotFound";
-
+import ProtectedRoute from "@/components/ProtectedRoute";
+import PublicOnlyRoute from "@/components/PublicOnlyRoute";
+import { AuthProvider } from "@/hooks/AuthProvider";
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Feed />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/tests" element={<Tests />} />
-          <Route path="/tests/reaction" element={<ReactionPage />} />
-          <Route path="/tests/chimp" element={<ChimpPage />} />
-          <Route path="/tests/typing" element={<TypingPage />} />
-          <Route path="/tests/sequence" element={<SequencePage />} />
-          <Route path="/quick-test" element={<Navigate to="/tests/reaction" replace />} />
-          <Route path="/leaderboards" element={<Leaderboards />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+
+            <Route path="/" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
+            <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
+            <Route path="/tests" element={<ProtectedRoute><Tests /></ProtectedRoute>} />
+            <Route path="/tests/reaction" element={<ProtectedRoute><ReactionPage /></ProtectedRoute>} />
+            <Route path="/tests/chimp" element={<ProtectedRoute><ChimpPage /></ProtectedRoute>} />
+            <Route path="/tests/typing" element={<ProtectedRoute><TypingPage /></ProtectedRoute>} />
+            <Route path="/tests/sequence" element={<ProtectedRoute><SequencePage /></ProtectedRoute>} />
+            <Route path="/quick-test" element={<ProtectedRoute><Navigate to="/tests/reaction" replace /></ProtectedRoute>} />
+            <Route path="/leaderboards" element={<ProtectedRoute><Leaderboards /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
+
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

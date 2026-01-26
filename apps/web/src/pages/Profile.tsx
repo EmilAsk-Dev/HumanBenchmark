@@ -9,16 +9,16 @@ import { Button } from '@/components/ui/button';
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { user, stats, badges, unlockedBadges, lockedBadges, isLoading, error } = useProfile();
-  const { logout, isAuthenticated } = useAuth();
+  const { user, stats, badges, unlockedBadges, lockedBadges, isLoading: profileLoading, error } = useProfile();
+  const { logout, isAuthenticated, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
+    if (!authLoading && !isAuthenticated) {
+      navigate("/login");
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
 
-  if (isLoading) {
+  if (profileLoading) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center h-64">
@@ -130,9 +130,9 @@ export default function Profile() {
           )}
         </div>
 
-        <Button 
-          variant="outline" 
-          className="w-full gap-2" 
+        <Button
+          variant="outline"
+          className="w-full gap-2"
           onClick={() => {
             logout();
             navigate('/login');

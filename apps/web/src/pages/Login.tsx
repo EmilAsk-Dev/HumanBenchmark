@@ -17,7 +17,7 @@ type AuthMode = 'login' | 'register';
 export default function Login() {
   const navigate = useNavigate();
   const { login, register, isLoading, error: authError, clearError, isAuthenticated } = useAuth();
-  
+
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,7 +45,7 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError('');
-    
+
     if (mode === 'login') {
       const result = await login(email, password);
       if (!result.error) {
@@ -80,17 +80,17 @@ export default function Login() {
     <div className="min-h-screen flex flex-col bg-background overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div 
+        <motion.div
           className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-primary/20 blur-3xl"
-          animate={{ 
+          animate={{
             x: [0, 30, 0],
             y: [0, -20, 0],
           }}
           transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <motion.div 
+        <motion.div
           className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-secondary/20 blur-3xl"
-          animate={{ 
+          animate={{
             x: [0, -30, 0],
             y: [0, 20, 0],
           }}
@@ -100,14 +100,14 @@ export default function Login() {
 
       <div className="relative flex-1 flex flex-col items-center justify-center p-6">
         {/* Logo */}
-        <motion.div 
+        <motion.div
           className="mb-8 text-center"
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
           <div className="flex items-center justify-center gap-3 mb-4">
-            <motion.div 
+            <motion.div
               className="flex h-12 w-12 items-center justify-center rounded-xl gradient-primary shadow-lg glow-primary"
               whileHover={{ scale: 1.1, rotate: 5 }}
               whileTap={{ scale: 0.95 }}
@@ -120,7 +120,7 @@ export default function Login() {
         </motion.div>
 
         {/* Auth Card */}
-        <motion.div 
+        <motion.div
           className="w-full max-w-sm"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -132,7 +132,7 @@ export default function Login() {
               <motion.div
                 className="absolute top-1 bottom-1 rounded-md bg-background shadow-sm"
                 initial={false}
-                animate={{ 
+                animate={{
                   left: mode === 'login' ? '4px' : '50%',
                   right: mode === 'login' ? '50%' : '4px',
                 }}
@@ -140,17 +140,15 @@ export default function Login() {
               />
               <button
                 onClick={() => setMode('login')}
-                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors relative z-10 ${
-                  mode === 'login' ? 'text-foreground' : 'text-muted-foreground'
-                }`}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors relative z-10 ${mode === 'login' ? 'text-foreground' : 'text-muted-foreground'
+                  }`}
               >
                 Log In
               </button>
               <button
                 onClick={() => setMode('register')}
-                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors relative z-10 ${
-                  mode === 'register' ? 'text-foreground' : 'text-muted-foreground'
-                }`}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors relative z-10 ${mode === 'register' ? 'text-foreground' : 'text-muted-foreground'
+                  }`}
               >
                 Sign Up
               </button>
@@ -159,7 +157,7 @@ export default function Login() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <AnimatePresence mode="wait">
                 {mode === 'register' && (
-                  <motion.div 
+                  <motion.div
                     key="register-fields"
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -233,7 +231,7 @@ export default function Login() {
                 )}
               </AnimatePresence>
 
-              <motion.div 
+              <motion.div
                 className="space-y-2"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -251,7 +249,7 @@ export default function Login() {
                 />
               </motion.div>
 
-              <motion.div 
+              <motion.div
                 className="space-y-2"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -281,7 +279,7 @@ export default function Login() {
               {/* Confirm Password - only in register mode */}
               <AnimatePresence mode="wait">
                 {mode === 'register' && (
-                  <motion.div 
+                  <motion.div
                     key="confirm-password-field"
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -313,7 +311,7 @@ export default function Login() {
 
               <AnimatePresence>
                 {displayError && (
-                  <motion.p 
+                  <motion.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
@@ -329,8 +327,8 @@ export default function Login() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
               >
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full gradient-primary text-primary-foreground gap-2"
                   disabled={isLoading}
                 >
@@ -348,7 +346,7 @@ export default function Login() {
             </form>
 
             {mode === 'login' && (
-              <motion.p 
+              <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="text-center text-sm text-muted-foreground mt-4"
@@ -359,7 +357,7 @@ export default function Login() {
           </div>
 
           {/* Skip for now */}
-          <motion.div 
+          <motion.div
             className="mt-6 text-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
