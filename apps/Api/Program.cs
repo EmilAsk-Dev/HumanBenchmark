@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
+
+
 if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
 {
     Env.Load();
@@ -69,9 +71,6 @@ if (app.Environment.IsDevelopment())
 }
 
 
-app.MapGroup("/auth")
-   .MapIdentityApi<ApplicationUser>()
-   .WithTags("Auth");
 
 
 
