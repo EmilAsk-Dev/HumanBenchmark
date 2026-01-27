@@ -29,17 +29,17 @@ public class FeedService
             return new List<FeedItemDto>();
 
         return await _db.Posts
-    .AsNoTracking()
-    .Where(p => friendIds.Contains(p.UserId))
-    .OrderByDescending(p => p.CreatedAt)
-    .Skip(skip)
-    .Take(take)
-    .Select(p => new FeedItemDto(
-        p.Id,
-        new UserDto(
-            p.User.Id,
-            p.User.UserName!,
-            p.User.UserName!
+            .AsNoTracking()
+            .Where(p => friendIds.Contains(p.UserId))
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip(skip)
+            .Take(take)
+            .Select(p => new FeedItemDto(
+                p.Id,
+                new UserDto(
+                    p.User.Id,
+                    p.User.UserName!,
+                    p.User.UserName!
 
         ),
         new TestRunDto(
@@ -53,18 +53,18 @@ public class FeedService
                 p.Attempt.SequenceDetails
             )
         ),
-        p.CreatedAt,
-        p.Likes.Count,
-        p.Likes.Any(l => l.UserId == me),
-        p.Comments.Select(c => new CommentDto(
-        c.Id,
-        c.PostId,
-        c.UserId,
-        c.Content,
-        c.CreatedAt,
-        c.Likes.Count,
-        c.Likes.Any(l => l.UserId == me)
-        )).ToList()
+            p.CreatedAt,
+            p.Likes.Count,
+            p.Likes.Any(l => l.UserId == me),
+            p.Comments.Select(c => new CommentDto(
+            c.Id,
+            c.PostId,
+            c.UserId,
+            c.Content,
+            c.CreatedAt,
+            c.Likes.Count,
+            c.Likes.Any(l => l.UserId == me)
+            )).ToList()
     ))
     .ToListAsync();
     }

@@ -13,7 +13,7 @@ namespace Api.Features.Friends;
 [Tags("Friends")]
 public class FriendsController : ControllerBase
 {
-    private readonly ApplicationDbContext _db;
+    private readonly ApplicationDbContext _db;  
 
     public FriendsController(ApplicationDbContext db)
     {

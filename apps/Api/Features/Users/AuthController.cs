@@ -77,7 +77,20 @@ public class AuthController : ControllerBase
         if (!result.Succeeded)
             return Unauthorized(new { message = "Invalid credentials" });
 
-        return Ok(new { message = "Logged in" });
+        // Generate token using Identity's built-in token provider
+        var token = await _userManager.GenerateUserTokenAsync(
+            user,
+            TokenOptions.DefaultProvider,
+            "Login"
+        );
+
+        return Ok(new
+        {
+            message = "Logged in",
+            token = token,
+            userId = user.Id,
+            email = user.Email
+        });
     }
 
     [HttpPost("logout")]
