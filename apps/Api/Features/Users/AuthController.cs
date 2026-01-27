@@ -24,7 +24,7 @@ public class AuthController : ControllerBase
         string Email,
         string Password,
         string Username,
-        DateOnly? DateOfBirth,
+        DateTime? DateOfBirth,
         string? Gender
     );
 
@@ -34,11 +34,14 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] RegisterRequest req)
     {
+        DateOnly? dateOfBirth = req.DateOfBirth.HasValue
+        ? DateOnly.FromDateTime(req.DateOfBirth.Value)
+        : null;
         var user = new ApplicationUser
         {
             UserName = req.Username,
             Email = req.Email,
-            DateOfBirth = req.DateOfBirth,
+            DateOfBirth = dateOfBirth,
             Gender = req.Gender,
         };
 
