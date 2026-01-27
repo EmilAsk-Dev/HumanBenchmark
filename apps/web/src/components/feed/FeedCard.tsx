@@ -50,6 +50,8 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
     onAddComment?.(post.id, content);
   };
 
+
+
   return (
     <>
       <motion.div
@@ -78,7 +80,7 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>{config.name}</span>
               <span>•</span>
-              <span>{formatTimeAgo(post.createdAt)}</span>
+              <span>{formatTimeAgo(new Date(post.createdAt))}</span>
             </div>
           </div>
         </div>
@@ -135,7 +137,7 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
               >
                 <Heart className={cn('h-5 w-5', post.isLiked && 'fill-current')} />
               </motion.div>
-              <span>{post.likes}</span>
+              <span>{post.likeCount}</span>
             </motion.button>
             <motion.button
               onClick={() => setIsCommentSheetOpen(true)}

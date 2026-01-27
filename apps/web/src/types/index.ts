@@ -1,4 +1,3 @@
-export type TestType = 'reaction' | 'chimp' | 'typing' | 'sequence';
 
 export interface User {
   id: string;
@@ -23,12 +22,11 @@ export interface TestRun {
 export interface Post {
   id: string;
   user: User;
-  userId: string;
   testRun: TestRun;
-  createdAt: Date;
-  likes: number;
-  comments: Comment[];
+  createdAt: string;
+  likeCount: number;
   isLiked: boolean;
+  comments: Comment[];
 }
 
 export interface Comment {
@@ -73,6 +71,8 @@ export interface DailyTest {
   isCompleted: boolean;
 }
 
+
+
 export type TimeFilter = 'daily' | 'weekly' | 'allTime';
 export type FeedFilter = 'friends' | 'global' | 'trending';
 
@@ -85,6 +85,22 @@ export interface TestConfig {
   unit: string;
   higherIsBetter: boolean;
 }
+
+export enum ApiTestType {
+  Reaction = 1,
+  Chimp = 2,
+  Typing = 3,
+  Sequence = 4,
+}
+
+export type TestType = 'reaction' | 'chimp' | 'typing' | 'sequence';
+
+export const apiTestTypeToTestType: Record<number, TestType> = {
+  [ApiTestType.Reaction]: 'reaction',
+  [ApiTestType.Chimp]: 'chimp',
+  [ApiTestType.Typing]: 'typing',
+  [ApiTestType.Sequence]: 'sequence',
+};
 
 export const TEST_CONFIGS: Record<TestType, TestConfig> = {
   reaction: {

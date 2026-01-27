@@ -258,42 +258,38 @@ public static class DbSeeder
     }
 
     private static async Task EnsureMinimumPostsAsync(
-        ApplicationDbContext db,
-        string adminId,
-        string aliceId,
-        DateTime now)
+    ApplicationDbContext db,
+    string adminId,
+    string aliceId,
+    DateTime now)
     {
-        var existing = await db.Posts.CountAsync();
-        if (existing >= 2) return;
+        var usedAttemptIds = await db.Posts
+            .Select(p => p.AttemptId)
+            .ToListAsync();
 
-        var usedAttemptIds = await db.Posts.Select(p => p.AttemptId).ToListAsync();
+        // ---------- ADMIN POST (ensure 1) ----------
+        var adminPostExists = await db.Posts.AnyAsync(p => p.UserId == adminId);
 
-        var adminAttemptId = await db.Attempts
-            .Where(a => a.UserId == adminId && !usedAttemptIds.Contains(a.Id))
-            .OrderByDescending(a => a.CreatedAt)
-            .Select(a => a.Id)
-            .FirstOrDefaultAsync();
-
-        if (adminAttemptId == 0)
+        if (!adminPostExists)
         {
-            var a = await AddAttemptAsync(db, adminId, GameType.Reaction, value: 230, createdAt: now.AddMinutes(-40));
-            adminAttemptId = a.Id;
-        }
+            var adminAttemptId = await db.Attempts
+                .Where(a => a.UserId == adminId && !usedAttemptIds.Contains(a.Id))
+                .OrderByDescending(a => a.CreatedAt)
+                .Select(a => a.Id)
+                .FirstOrDefaultAsync();
 
-        var aliceAttemptId = await db.Attempts
-            .Where(a => a.UserId == aliceId && !usedAttemptIds.Contains(a.Id) && a.Id != adminAttemptId)
-            .OrderByDescending(a => a.CreatedAt)
-            .Select(a => a.Id)
-            .FirstOrDefaultAsync();
+            if (adminAttemptId == 0)
+            {
+                var a = await AddAttemptAsync(
+                    db,
+                    adminId,
+                    GameType.Reaction,
+                    value: 230,
+                    createdAt: now.AddMinutes(-40)
+                );
+                adminAttemptId = a.Id;
+            }
 
-        if (aliceAttemptId == 0)
-        {
-            var a = await AddAttemptAsync(db, aliceId, GameType.Typing, value: 66, createdAt: now.AddMinutes(-35));
-            aliceAttemptId = a.Id;
-        }
-
-        if (await db.Posts.CountAsync() < 2)
-        {
             db.Posts.Add(new Post
             {
                 UserId = adminId,
@@ -301,19 +297,52 @@ public static class DbSeeder
                 Caption = "First post: reaction run",
                 CreatedAt = now.AddMinutes(-34)
             });
+
             await db.SaveChangesAsync();
+            usedAttemptIds.Add(adminAttemptId);
         }
 
-        if (await db.Posts.CountAsync() < 2)
+        // ---------- ALICE POSTS (ensure 3) ----------
+        var alicePostCount = await db.Posts.CountAsync(p => p.UserId == aliceId);
+        var postsToAdd = 3 - alicePostCount;
+
+        for (int i = 0; i < postsToAdd; i++)
         {
+            var aliceAttemptId = await db.Attempts
+                .Where(a =>
+                    a.UserId == aliceId &&
+                    !usedAttemptIds.Contains(a.Id))
+                .OrderByDescending(a => a.CreatedAt)
+                .Select(a => a.Id)
+                .FirstOrDefaultAsync();
+
+            if (aliceAttemptId == 0)
+            {
+                var a = await AddAttemptAsync(
+                    db,
+                    aliceId,
+                    GameType.Typing,
+                    value: 60 + i * 3,
+                    createdAt: now.AddMinutes(-30 - i * 5)
+                );
+                aliceAttemptId = a.Id;
+            }
+
             db.Posts.Add(new Post
             {
                 UserId = aliceId,
                 AttemptId = aliceAttemptId,
-                Caption = "Typing PB today",
-                CreatedAt = now.AddMinutes(-33)
+                Caption = i switch
+                {
+                    0 => "Typing PB today 🔥",
+                    1 => "Consistency paying off",
+                    _ => "Another solid run 💪"
+                },
+                CreatedAt = now.AddMinutes(-33 - i * 4)
             });
+
             await db.SaveChangesAsync();
+            usedAttemptIds.Add(aliceAttemptId);
         }
     }
 
