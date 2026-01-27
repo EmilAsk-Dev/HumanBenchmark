@@ -16,7 +16,7 @@ export default function Feed() {
       <div className="divide-y divide-border">
         {posts.map((post, index) => (
           <FeedCard
-            key={post.id}
+            key={(post as any).id ?? `${post.userId}-${index}`}
             post={post}
             onLike={likePost}
             onAddComment={addComment}

@@ -13,6 +13,7 @@ export const API_CONFIG = {
     USER_PROFILE: '/users/:id',
 
     // Feed
+    FEED: '/feed',
     POSTS: '/posts',
     POST: '/posts/:id',
     LIKE_POST: '/posts/:id/like',
@@ -49,43 +50,58 @@ export function getAuthToken(): string | null {
   return authToken;
 }
 
-// API Client
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<{ data: T | null; error: string | null }> {
   const url = `${API_CONFIG.BASE_URL}${endpoint}`;
+  console.log("[apiRequest]", options.method ?? "GET", url);
 
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...options.headers,
   };
-
-  if (authToken) {
-    (headers as Record<string, string>)['Authorization'] = `Bearer ${authToken}`;
-  }
 
   try {
     const response = await fetch(url, {
       ...options,
       headers,
+      credentials: "include",
     });
 
+
+
+    if (response.status === 204) {
+      return { data: null, error: null };
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    const isJson = contentType.includes("application/json");
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const body = isJson ? JSON.stringify(await response.json()) : await response.text();
       return {
         data: null,
-        error: errorData.message || `HTTP error ${response.status}`
+        error: body || `HTTP error ${response.status}`,
       };
     }
 
-    const data = await response.json();
+    if (!isJson) {
+      const text = await response.text();
+      return {
+        data: null,
+        error: `Expected JSON but got ${contentType || "unknown"}: ${text.slice(0, 200)}`,
+      };
+    }
+
+    const data = (await response.json()) as T;
+    console.log("[apiRequest] response", response.status, response.statusText, data);
     return { data, error: null };
   } catch (error) {
-    console.error('API request failed:', error);
+    console.error("API request failed:", error);
     return {
       data: null,
-      error: error instanceof Error ? error.message : 'Network error'
+      error: error instanceof Error ? error.message : "Network error",
     };
   }
 }
@@ -147,6 +163,11 @@ export const api = {
   },
 
   // Feed
+
+  async getFeed() {
+    return apiRequest<any[]>(`${API_CONFIG.ENDPOINTS.FEED}`);
+  },
+
   async getPosts(filter: string = 'global') {
     return apiRequest<any[]>(`${API_CONFIG.ENDPOINTS.POSTS}?filter=${filter}`);
   },

@@ -23,6 +23,7 @@ export interface TestRun {
 export interface Post {
   id: string;
   user: User;
+  userId: string;
   testRun: TestRun;
   createdAt: Date;
   likes: number;
