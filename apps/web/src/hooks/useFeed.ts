@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Post, FeedFilter } from '@/types';
 import { api } from '@/lib/api';
+import { normalizePosts } from '@/lib/normalize';
 
 export function useFeed() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -22,7 +23,7 @@ export function useFeed() {
     }
 
     setFilter(feedFilter);
-    setPosts(data || []);
+    setPosts(normalizePosts(data ?? []));
     setIsLoading(false);
   }, []);
 
@@ -42,7 +43,7 @@ export function useFeed() {
     // Optimistic update
     setPosts(prev => prev.map(post =>
       post.id === postId
-        ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
+        ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likeCount - 1 : post.likeCount + 1 }
         : post
     ));
 
@@ -52,7 +53,7 @@ export function useFeed() {
       // Revert on error
       setPosts(prev => prev.map(post =>
         post.id === postId
-          ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
+          ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likeCount - 1 : post.likeCount + 1 }
           : post
       ));
     }

@@ -12,23 +12,23 @@ export function useTests() {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      
+
       const [statsResult, dailyResult] = await Promise.all([
         api.getTestStats(),
         api.getDailyTest(),
       ]);
-      
+
       if (statsResult.data) {
         setStats(statsResult.data);
       }
-      
+
       if (dailyResult.data) {
         setDailyTest(dailyResult.data);
       }
-      
+
       setIsLoading(false);
     };
-    
+
     fetchData();
   }, []);
 
@@ -39,22 +39,22 @@ export function useTests() {
   const submitTestResult = useCallback(async (testType: TestType, score: number): Promise<TestRun | null> => {
     setIsLoading(true);
     setError(null);
-    
+
     const { data, error: apiError } = await api.submitTestResult(testType, score);
-    
+
     if (apiError) {
       setError(apiError);
       setIsLoading(false);
       return null;
     }
-    
+
     // Update local stats with the new result
     if (data?.stats) {
-      setStats(prev => prev.map(s => 
+      setStats(prev => prev.map(s =>
         s.testType === testType ? data.stats : s
       ));
     }
-    
+
     setIsLoading(false);
     return data?.testRun || null;
   }, []);

@@ -9,7 +9,7 @@ public class Attempt
     public int Value { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
+    
     public ReactionAttemptDetails? ReactionDetails { get; set; }
     public ChimpAttemptDetails? ChimpDetails { get; set; }
     public TypingAttemptDetails? TypingDetails { get; set; }
