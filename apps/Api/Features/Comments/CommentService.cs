@@ -1,4 +1,3 @@
-// Api/Features/Comments/CommentService.cs
 using Api.Data;
 using Api.Domain;
 using Microsoft.EntityFrameworkCore;

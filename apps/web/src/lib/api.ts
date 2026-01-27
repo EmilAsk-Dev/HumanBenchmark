@@ -134,7 +134,7 @@ export const api = {
     return result;
   },
 
-  async register(email: string, password: string, username: string, dateOfBirth?: string, gender?: string) {
+  async register(email: string, password: string, username: string, dateOfBirth?: Date, gender?: string) {
     const result = await apiRequest<{ user: any; token: string }>(
       API_CONFIG.ENDPOINTS.REGISTER,
       {
