@@ -9,9 +9,9 @@ interface DailyTestBannerProps {
 
 export function DailyTestBanner({ dailyTest }: DailyTestBannerProps) {
   if (!dailyTest) return null;
-  
+
   const config = TEST_CONFIGS[dailyTest.testType];
-  
+
   if (dailyTest.isCompleted) {
     return (
       <div className="mx-4 mt-4 p-4 rounded-2xl bg-muted/50 border border-border">
@@ -35,7 +35,7 @@ export function DailyTestBanner({ dailyTest }: DailyTestBannerProps) {
         <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/20" />
         <div className="absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-white/10" />
       </div>
-      
+
       <div className="relative flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20">
@@ -51,10 +51,10 @@ export function DailyTestBanner({ dailyTest }: DailyTestBannerProps) {
             </div>
           </div>
         </div>
-        
+
         <Link to={`/tests/${dailyTest.testType}?daily=true`}>
-          <Button 
-            size="sm" 
+          <Button
+            size="sm"
             className="gap-2 bg-white text-foreground hover:bg-white/90 shadow-lg"
           >
             <Play className="h-4 w-4" />

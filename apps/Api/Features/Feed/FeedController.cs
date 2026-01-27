@@ -8,7 +8,7 @@ namespace Api.Features.Feed;
 [ApiController]
 [Route("feed")]
 [Authorize]
-[Tags("Feed")]
+[Tags("feed")]
 public class FeedController : ControllerBase
 {
     private readonly FeedService _svc;

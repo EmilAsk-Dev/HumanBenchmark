@@ -12,15 +12,15 @@ export function useFeed() {
   const fetchPosts = useCallback(async (feedFilter: FeedFilter) => {
     setIsLoading(true);
     setError(null);
-    
-    const { data, error: apiError } = await api.getPosts(feedFilter);
-    
+
+    const { data, error: apiError } = await api.getFeed();
+
     if (apiError) {
       setError(apiError);
       setIsLoading(false);
       return;
     }
-    
+
     setFilter(feedFilter);
     setPosts(data || []);
     setIsLoading(false);
@@ -33,24 +33,24 @@ export function useFeed() {
 
   const refreshFeed = useCallback(async () => {
     setIsRefreshing(true);
-    const { data } = await api.getPosts(filter);
+    const { data } = await api.getPosts();
     setPosts(data || []);
     setIsRefreshing(false);
   }, [filter]);
 
   const likePost = useCallback(async (postId: string) => {
     // Optimistic update
-    setPosts(prev => prev.map(post => 
+    setPosts(prev => prev.map(post =>
       post.id === postId
         ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
         : post
     ));
-    
+
     const { error } = await api.likePost(postId);
-    
+
     if (error) {
       // Revert on error
-      setPosts(prev => prev.map(post => 
+      setPosts(prev => prev.map(post =>
         post.id === postId
           ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
           : post
@@ -60,15 +60,15 @@ export function useFeed() {
 
   const addComment = useCallback(async (postId: string, content: string) => {
     const { data, error } = await api.addComment(postId, content);
-    
+
     if (!error && data) {
-      setPosts(prev => prev.map(post => 
+      setPosts(prev => prev.map(post =>
         post.id === postId
           ? { ...post, comments: [...post.comments, data] }
           : post
       ));
     }
-    
+
     return { data, error };
   }, []);
 

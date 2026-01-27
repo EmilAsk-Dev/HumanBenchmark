@@ -15,12 +15,12 @@ export default function Feed() {
       <FeedFilters currentFilter={filter} onFilterChange={setFilter} />
       <div className="divide-y divide-border">
         {posts.map((post, index) => (
-          <FeedCard 
-            key={post.id} 
-            post={post} 
-            onLike={likePost} 
+          <FeedCard
+            key={(post as any).id ?? `${post.userId}-${index}`}
+            post={post}
+            onLike={likePost}
             onAddComment={addComment}
-            index={index} 
+            index={index}
           />
         ))}
       </div>

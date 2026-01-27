@@ -30,7 +30,8 @@ builder.Services.AddScoped<Api.Features.Likes.LikesService>();
 builder.Services.AddScoped<Api.Features.Posts.PostsService>();
 builder.Services.AddScoped<Api.Features.Leaderboards.LeaderboardService>();
 builder.Services.AddScoped<Api.Features.Users.ProfileService>();
-
+builder.Services.AddScoped<Api.Features.Comments.CommentService>();
+builder.Services.AddScoped<Api.Features.Feed.FeedService>();
 
 
 var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
@@ -51,6 +52,7 @@ builder.Services
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
 
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
@@ -60,6 +62,8 @@ if (!app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapIdentityApi<ApplicationUser>();
 
 if (app.Environment.IsDevelopment())
 {

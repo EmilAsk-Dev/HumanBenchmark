@@ -41,7 +41,7 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
   const handleAddComment = (content: string) => {
     const newComment: Comment = {
       id: `comment-${Date.now()}`,
-      user: mockUsers[0], // Current user
+      user: mockUsers[0],
       content,
       createdAt: new Date(),
       likes: 0,
@@ -49,10 +49,10 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
     setLocalComments(prev => [newComment, ...prev]);
     onAddComment?.(post.id, content);
   };
-  
+
   return (
     <>
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.05, duration: 0.3 }}
@@ -60,8 +60,8 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
       >
         {/* Header */}
         <div className="flex items-center gap-3 mb-3">
-          <motion.img 
-            src={post.user.avatar} 
+          <motion.img
+            src={post.user.avatar}
             alt={post.user.displayName}
             className="h-10 w-10 rounded-full bg-muted"
             whileHover={{ scale: 1.1 }}
@@ -84,13 +84,13 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
         </div>
 
         {/* Score Display */}
-        <motion.div 
+        <motion.div
           className="flex items-center justify-between mb-4 p-4 rounded-xl bg-muted/50"
           whileHover={{ scale: 1.01 }}
           transition={{ type: 'spring', stiffness: 400 }}
         >
           <div className="flex items-center gap-4">
-            <motion.div 
+            <motion.div
               className="flex h-12 w-12 items-center justify-center rounded-xl"
               style={{ backgroundColor: `${config.color}20` }}
               whileHover={{ rotate: [0, -10, 10, 0] }}
@@ -121,7 +121,7 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
         {/* Actions */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <motion.button 
+            <motion.button
               onClick={() => onLike(post.id)}
               className={cn(
                 'flex items-center gap-1.5 text-sm transition-colors',
@@ -137,7 +137,7 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
               </motion.div>
               <span>{post.likes}</span>
             </motion.button>
-            <motion.button 
+            <motion.button
               onClick={() => setIsCommentSheetOpen(true)}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
               whileTap={{ scale: 0.9 }}
@@ -146,7 +146,7 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
               <span>{localComments.length}</span>
             </motion.button>
           </div>
-          
+
           <Link to={`/tests/${post.testRun.testType}`}>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button size="sm" className="gap-2 gradient-primary text-primary-foreground border-0">
