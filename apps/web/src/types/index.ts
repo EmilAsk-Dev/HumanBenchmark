@@ -35,6 +35,7 @@ export interface Comment {
   content: string;
   createdAt: Date;
   likes: number;
+  isLiked?: boolean;
 }
 
 export interface LeaderboardEntry {
@@ -91,6 +92,11 @@ export enum ApiTestType {
   Chimp = 2,
   Typing = 3,
   Sequence = 4,
+}
+
+export enum LikeTargetType {
+  Post = 1,
+  Comment = 2,
 }
 
 export type TestType = 'reaction' | 'chimp' | 'typing' | 'sequence';

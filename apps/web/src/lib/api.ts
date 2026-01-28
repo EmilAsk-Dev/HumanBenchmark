@@ -1,3 +1,9 @@
+import { LikeTargetType } from '../types/index.js';
+
+export function likeTargetTypeToRoute(type: LikeTargetType): "post" | "comment" {
+  return type === LikeTargetType.Post ? "post" : "comment";
+}
+
 // API Configuration - Update these values to match your backend
 export const API_CONFIG = {
   BASE_URL: 'api', // Replace with your API URL
@@ -16,7 +22,8 @@ export const API_CONFIG = {
     FEED: '/feed',
     POSTS: '/posts',
     POST: '/posts/:id',
-    LIKE_POST: '/posts/:id/like',
+    LIKE: "/likes",
+    UNLIKE: "/likes/:targetType/:targetId",
     COMMENTS: '/posts/:id/comments',
 
     // Tests
@@ -172,10 +179,27 @@ export const api = {
     return apiRequest<any[]>(`${API_CONFIG.ENDPOINTS.POSTS}?filter=${filter}`);
   },
 
-  async likePost(postId: string) {
-    return apiRequest<any>(
-      replaceParams(API_CONFIG.ENDPOINTS.LIKE_POST, { id: postId }),
-      { method: 'POST' }
+  async like(targetId: string | number, targetType: LikeTargetType) {
+    return apiRequest(
+      API_CONFIG.ENDPOINTS.LIKE,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetType,
+          targetId: Number(targetId),
+        }),
+      }
+    );
+  },
+
+  async unlike(targetId: string | number, targetType: LikeTargetType) {
+    return apiRequest(
+      replaceParams(API_CONFIG.ENDPOINTS.UNLIKE, {
+        targetType: likeTargetTypeToRoute(targetType),
+        targetId: String(targetId),
+      }),
+      { method: "DELETE" }
     );
   },
 
