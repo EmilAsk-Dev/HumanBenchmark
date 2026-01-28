@@ -9,7 +9,7 @@ pool:
 variables:
   buildConfiguration: 'Release'
   apiProject: 'apps/Api/Api.csproj'
-  webRoot: 'apps/Web'     # change to apps/web if that's the real casing
+  webRoot: 'apps/web'     # change to apps/web if that's the real casing
   dotnetSdkVersion: '10.0.100'
 
 steps:
