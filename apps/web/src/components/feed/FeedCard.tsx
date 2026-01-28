@@ -51,6 +51,8 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
     onAddComment?.(post.id, content);
   };
 
+
+
   return (
     <>
       <motion.div
