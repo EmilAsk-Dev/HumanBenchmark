@@ -8,8 +8,9 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
-  apiRoot: 'apps/Api'
-  webRoot: 'apps/Web'     # IMPORTANT: Linux is case-sensitive. Change to apps/web if that's your folder.
+  apiProject: 'apps/Api/Api.csproj'
+  webRoot: 'apps/Web'     # change to apps/web if that's the real casing
+  dotnetSdkVersion: '10.0.100'
 
 steps:
 - checkout: self
@@ -18,38 +19,44 @@ steps:
 # Debug repo structure (helps catch casing/path issues)
 # --------------------
 - script: |
-    echo "PWD:"
-    pwd
-    echo "Repo root contents:"
-    ls -la
-    echo "apps/ contents:"
-    ls -la apps || true
-    echo "package.json files under apps/:"
-    find apps -maxdepth 4 -type f -name package.json -print || true
-    echo "*.csproj files under apps/:"
-    find apps -maxdepth 5 -type f -name "*.csproj" -print || true
+    echo "PWD:" && pwd
+    echo "Repo root:" && ls -la
+    echo "apps/:" && ls -la apps || true
+    echo "Find csproj:" && find apps -maxdepth 5 -type f -name "*.csproj" -print || true
+    echo "Find package.json:" && find apps -maxdepth 4 -type f -name package.json -print || true
+    echo "global.json (if exists):"
+    test -f global.json && cat global.json || echo "No global.json"
   displayName: 'Debug: verify repo paths'
+
+# --------------------
+# Install .NET SDK (10.x)
+# --------------------
+- task: UseDotNet@2
+  displayName: 'Install .NET SDK $(dotnetSdkVersion)'
+  inputs:
+    packageType: 'sdk'
+    version: '$(dotnetSdkVersion)'
+    includePreviewVersions: true   # important if 10.x is preview on the agent feed
+
+- script: |
+    dotnet --info
+    dotnet --list-sdks
+  displayName: 'Debug: dotnet version'
 
 # --------------------
 # API (.NET / EF)
 # --------------------
-- task: UseDotNet@2
-  displayName: 'Use .NET SDK'
-  inputs:
-    packageType: 'sdk'
-    version: '8.x'   # change to 6.x / 7.x if your API targets that SDK
-
 - task: DotNetCoreCLI@2
   displayName: 'Restore API'
   inputs:
     command: 'restore'
-    projects: '$(apiRoot)/**/*.csproj'
+    projects: '$(apiProject)'
 
 - task: DotNetCoreCLI@2
   displayName: 'Build API'
   inputs:
     command: 'build'
-    projects: '$(apiRoot)/**/*.csproj'
+    projects: '$(apiProject)'
     arguments: '--configuration $(buildConfiguration) --no-restore'
 
 - task: DotNetCoreCLI@2
@@ -57,7 +64,7 @@ steps:
   inputs:
     command: 'publish'
     publishWebProjects: false
-    projects: '$(apiRoot)/**/*.csproj'
+    projects: '$(apiProject)'
     arguments: '--configuration $(buildConfiguration) --no-build --output $(Build.ArtifactStagingDirectory)/api'
     zipAfterPublish: false
 
@@ -76,7 +83,6 @@ steps:
   inputs:
     versionSpec: '20.x'
 
-# Guard + build (gives a clearer error than "workingDirectory not found")
 - script: |
     test -d "$(webRoot)" || (echo "Web folder not found: $(webRoot)"; echo "apps/ contents:"; ls -la apps; exit 1)
     cd "$(webRoot)"
