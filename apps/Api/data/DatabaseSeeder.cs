@@ -30,22 +30,26 @@ public static class DbSeeder
         var admin = await EnsureUserAsync(userManager,
             email: "admin@local.test",
             password: "Admin123!",
-            roles: new[] { "Admin" });
+            roles: new[] { "Admin" },
+            username: "admin");
 
         var alice = await EnsureUserAsync(userManager,
             email: "alice@local.test",
             password: "User123!",
-            roles: new[] { "User" });
+            roles: new[] { "User" },
+            username: "alice");
 
         var bob = await EnsureUserAsync(userManager,
             email: "bob@local.test",
             password: "User123!",
-            roles: new[] { "User" });
+            roles: new[] { "User" },
+            username: "bob");
 
         var clara = await EnsureUserAsync(userManager,
             email: "clara@local.test",
             password: "User123!",
-            roles: new[] { "User" });
+            roles: new[] { "User" },
+            username: "clara");
 
         // 3) Friendships (make a small friend graph)
         // Adjust if your Friendship entity is different.
@@ -76,14 +80,15 @@ public static class DbSeeder
         UserManager<ApplicationUser> userManager,
         string email,
         string password,
-        string[] roles)
+        string[] roles,
+        string? username)
     {
         var user = await userManager.FindByEmailAsync(email);
         if (user is null)
         {
             user = new ApplicationUser
             {
-                UserName = email,
+                UserName = username ?? email,
                 Email = email,
                 EmailConfirmed = true
             };
