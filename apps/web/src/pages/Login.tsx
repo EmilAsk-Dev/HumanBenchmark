@@ -237,14 +237,13 @@ export default function Login() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email or username</Label>
                 <Input
                   id="email"
-                  type="email"
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="bg-muted/50"
+                  className="bg-muted/50" 
                   required
                 />
               </motion.div>

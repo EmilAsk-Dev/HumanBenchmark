@@ -1,23 +1,23 @@
-import { useState } from 'react';
-import { Heart, MessageCircle, Play } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Post, TEST_CONFIGS, Comment } from '@/types';
-import { Button } from '@/components/ui/button';
-import { CommentSheet } from './CommentSheet';
-import { cn } from '@/lib/utils';
-import { mockUsers } from '@/lib/mockData';
+import { useState } from "react";
+import { Heart, MessageCircle, Play } from "lucide-react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { Post, TEST_CONFIGS, Comment, LikeTargetType } from "@/types";
+import { Button } from "@/components/ui/button";
+import { CommentSheet } from "./CommentSheet";
+import { cn } from "@/lib/utils";
+import { mockUsers } from "@/lib/mockData";
 
 interface FeedCardProps {
   post: Post;
-  onLike: (postId: string) => void;
+  onLike: (targetId: string, targetType: LikeTargetType) => void;
   onAddComment?: (postId: string, content: string) => void;
   index?: number;
 }
 
 function formatTimeAgo(date: Date): string {
   const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-  if (seconds < 60) return 'just now';
+  if (seconds < 60) return "just now";
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
@@ -27,16 +27,16 @@ function formatTimeAgo(date: Date): string {
 }
 
 function getPercentileColor(percentile: number): string {
-  if (percentile >= 95) return 'text-yellow-500';
-  if (percentile >= 80) return 'text-primary';
-  if (percentile >= 50) return 'text-success';
-  return 'text-muted-foreground';
+  if (percentile >= 95) return "text-yellow-500";
+  if (percentile >= 80) return "text-primary";
+  if (percentile >= 50) return "text-success";
+  return "text-muted-foreground";
 }
 
 export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProps) {
-  const config = TEST_CONFIGS[post.testRun.testType];
+  const config = TEST_CONFIGS[post.testRun.testType] ?? TEST_CONFIGS.reaction;
   const [isCommentSheetOpen, setIsCommentSheetOpen] = useState(false);
-  const [localComments, setLocalComments] = useState<Comment[]>(post.comments);
+  const [localComments, setLocalComments] = useState<Comment[]>(post.comments ?? []);
 
   const handleAddComment = (content: string) => {
     const newComment: Comment = {
@@ -45,6 +45,7 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
       content,
       createdAt: new Date(),
       likes: 0,
+      isLiked: false,
     };
     setLocalComments(prev => [newComment, ...prev]);
     onAddComment?.(post.id, content);
@@ -70,12 +71,8 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
           />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-foreground truncate">
-                {post.user.displayName}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                @{post.user.username}
-              </span>
+              <span className="font-semibold text-foreground truncate">{post.user.displayName}</span>
+              <span className="text-xs text-muted-foreground">@{post.user.username}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>{config.name}</span>
@@ -89,7 +86,7 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
         <motion.div
           className="flex items-center justify-between mb-4 p-4 rounded-xl bg-muted/50"
           whileHover={{ scale: 1.01 }}
-          transition={{ type: 'spring', stiffness: 400 }}
+          transition={{ type: "spring", stiffness: 400 }}
         >
           <div className="flex items-center gap-4">
             <motion.div
@@ -99,22 +96,20 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
               transition={{ duration: 0.5 }}
             >
               <span className="text-2xl" style={{ color: config.color }}>
-                {config.icon === 'Zap' && '⚡'}
-                {config.icon === 'Brain' && '🧠'}
-                {config.icon === 'Keyboard' && '⌨️'}
-                {config.icon === 'Grid3x3' && '🔲'}
+                {config.icon === "Zap" && "⚡"}
+                {config.icon === "Brain" && "🧠"}
+                {config.icon === "Keyboard" && "⌨️"}
+                {config.icon === "Grid3x3" && "🔲"}
               </span>
             </motion.div>
             <div>
               <div className="text-3xl font-bold text-foreground">
                 {post.testRun.score}
-                <span className="text-lg font-normal text-muted-foreground ml-1">
-                  {config.unit}
-                </span>
+                <span className="text-lg font-normal text-muted-foreground ml-1">{config.unit}</span>
               </div>
             </div>
           </div>
-          <div className={cn('text-right', getPercentileColor(post.testRun.percentile))}>
+          <div className={cn("text-right", getPercentileColor(post.testRun.percentile))}>
             <div className="text-2xl font-bold">Top {100 - post.testRun.percentile}%</div>
             <div className="text-xs text-muted-foreground">Percentile: {post.testRun.percentile}</div>
           </div>
@@ -124,21 +119,19 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <motion.button
-              onClick={() => onLike(post.id)}
+              onClick={() => onLike(post.id, LikeTargetType.Post)}
               className={cn(
-                'flex items-center gap-1.5 text-sm transition-colors',
-                post.isLiked ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'
+                "flex items-center gap-1.5 text-sm transition-colors",
+                post.isLiked ? "text-destructive" : "text-muted-foreground hover:text-destructive"
               )}
               whileTap={{ scale: 0.9 }}
             >
-              <motion.div
-                animate={post.isLiked ? { scale: [1, 1.3, 1] } : {}}
-                transition={{ duration: 0.3 }}
-              >
-                <Heart className={cn('h-5 w-5', post.isLiked && 'fill-current')} />
+              <motion.div animate={post.isLiked ? { scale: [1, 1.3, 1] } : {}} transition={{ duration: 0.3 }}>
+                <Heart className={cn("h-5 w-5", post.isLiked && "fill-current")} />
               </motion.div>
               <span>{post.likeCount}</span>
             </motion.button>
+
             <motion.button
               onClick={() => setIsCommentSheetOpen(true)}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -166,6 +159,7 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
         comments={localComments}
         onAddComment={handleAddComment}
         postId={post.id}
+        onLike={onLike}
       />
     </>
   );

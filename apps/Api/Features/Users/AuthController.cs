@@ -67,8 +67,16 @@ public class AuthController : ControllerBase
     {
         // Find by email
         var user = await _userManager.FindByEmailAsync(req.Email);
+        var username = await _userManager.FindByNameAsync(req.Email);
+        if (user is null && username is null)
+            return Unauthorized(new { message = "Invalid credentials" });
+
+        if (user is null)
+            user = username;
+
         if (user is null)
             return Unauthorized(new { message = "Invalid credentials" });
+
 
         var result = await _signInManager.PasswordSignInAsync(
             user,
