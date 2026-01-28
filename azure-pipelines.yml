@@ -8,28 +8,48 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
-  apiProject: 'apps/Api/Api.csproj'  
-  webPath: 'apps/Web'
+  apiRoot: 'apps/Api'
+  webRoot: 'apps/Web'     # IMPORTANT: Linux is case-sensitive. Change to apps/web if that's your folder.
 
 steps:
-# ---------- API (.NET / EF) ----------
+- checkout: self
+
+# --------------------
+# Debug repo structure (helps catch casing/path issues)
+# --------------------
+- script: |
+    echo "PWD:"
+    pwd
+    echo "Repo root contents:"
+    ls -la
+    echo "apps/ contents:"
+    ls -la apps || true
+    echo "package.json files under apps/:"
+    find apps -maxdepth 4 -type f -name package.json -print || true
+    echo "*.csproj files under apps/:"
+    find apps -maxdepth 5 -type f -name "*.csproj" -print || true
+  displayName: 'Debug: verify repo paths'
+
+# --------------------
+# API (.NET / EF)
+# --------------------
 - task: UseDotNet@2
   displayName: 'Use .NET SDK'
   inputs:
     packageType: 'sdk'
-    version: '10.x'   
+    version: '8.x'   # change to 6.x / 7.x if your API targets that SDK
 
 - task: DotNetCoreCLI@2
   displayName: 'Restore API'
   inputs:
     command: 'restore'
-    projects: '$(apiProject)'
+    projects: '$(apiRoot)/**/*.csproj'
 
 - task: DotNetCoreCLI@2
   displayName: 'Build API'
   inputs:
     command: 'build'
-    projects: '$(apiProject)'
+    projects: '$(apiRoot)/**/*.csproj'
     arguments: '--configuration $(buildConfiguration) --no-restore'
 
 - task: DotNetCoreCLI@2
@@ -37,7 +57,7 @@ steps:
   inputs:
     command: 'publish'
     publishWebProjects: false
-    projects: '$(apiProject)'
+    projects: '$(apiRoot)/**/*.csproj'
     arguments: '--configuration $(buildConfiguration) --no-build --output $(Build.ArtifactStagingDirectory)/api'
     zipAfterPublish: false
 
@@ -48,22 +68,27 @@ steps:
     artifact: 'api'
     publishLocation: 'pipeline'
 
-
-# ---------- Web (Vite React) ----------
+# --------------------
+# Web (Vite React)
+# --------------------
 - task: NodeTool@0
   displayName: 'Use Node.js 20'
   inputs:
     versionSpec: '20.x'
 
+# Guard + build (gives a clearer error than "workingDirectory not found")
 - script: |
+    test -d "$(webRoot)" || (echo "Web folder not found: $(webRoot)"; echo "apps/ contents:"; ls -la apps; exit 1)
+    cd "$(webRoot)"
+    node -v
+    npm -v
     npm ci
     npm run build
-  workingDirectory: '$(webPath)'
   displayName: 'Build Web'
 
 - task: PublishPipelineArtifact@1
   displayName: 'Publish Web artifact'
   inputs:
-    targetPath: '$(webPath)/dist'
+    targetPath: '$(webRoot)/dist'
     artifact: 'web'
     publishLocation: 'pipeline'
