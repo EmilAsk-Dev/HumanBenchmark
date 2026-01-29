@@ -71,10 +71,11 @@ steps:
 # Then copy web/dist into API wwwroot
 # ============================
 - task: DotNetCoreCLI@2
-  displayName: "Restore API"
+  displayName: "Restore API (linux-x64)"
   inputs:
     command: "restore"
     projects: "$(apiProject)"
+    arguments: "-r linux-x64"
 
 - task: DotNetCoreCLI@2
   displayName: "Build API"
