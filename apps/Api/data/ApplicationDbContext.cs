@@ -172,6 +172,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.NoAction);
 
+            e.HasOne(c => c.ParentComment)
+                .WithMany(c => c.Replies)
+                .HasForeignKey(c => c.ParentCommentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             e.HasMany(x => x.Likes)
                 .WithOne(x => x.Comment)
                 .HasForeignKey(x => x.CommentId)
