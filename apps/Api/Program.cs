@@ -1,29 +1,32 @@
+// Program.cs
 using Api.Data;
+using Api.Domain;
 using DotNetEnv;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
+var builder = WebApplication.CreateBuilder(args);
 
+var port = Environment.GetEnvironmentVariable("PORT");
 
-if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+if (!string.IsNullOrWhiteSpace(port))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
+else if (builder.Environment.IsDevelopment())
+{
+    builder.WebHost.UseUrls("http://0.0.0.0:5014");
+}
+
+if (builder.Environment.IsDevelopment())
 {
     Env.Load();
 }
 
-var urls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
-var port = Environment.GetEnvironmentVariable("PORT");
-
-if (string.IsNullOrWhiteSpace(urls))
-{
-    var p = string.IsNullOrWhiteSpace(port) ? "5014" : port;
-    Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"http://0.0.0.0:{p}");
-}
-
-var builder = WebApplication.CreateBuilder(args);
-
 
 builder.Services.AddOpenApi();
+
 builder.Services.AddScoped<Api.Features.Attempts.Services.AttemptWriter>();
 builder.Services.AddScoped<Api.Features.Feed.FeedService>();
 builder.Services.AddScoped<Api.Features.Likes.LikesService>();
@@ -31,18 +34,15 @@ builder.Services.AddScoped<Api.Features.Posts.PostsService>();
 builder.Services.AddScoped<Api.Features.Leaderboards.LeaderboardService>();
 builder.Services.AddScoped<Api.Features.Users.ProfileService>();
 builder.Services.AddScoped<Api.Features.Comments.CommentService>();
-builder.Services.AddScoped<Api.Features.Feed.FeedService>();
-
 
 var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
-
 if (string.IsNullOrWhiteSpace(connectionString))
 {
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 }
 
-
-builder.Services.AddDbContext<ApplicationDbContext>(opt => opt.UseSqlServer(connectionString));
+builder.Services.AddDbContext<ApplicationDbContext>(opt =>
+    opt.UseSqlServer(connectionString));
 
 builder.Services
     .AddIdentityApiEndpoints<ApplicationUser>()
@@ -52,7 +52,9 @@ builder.Services
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
 
-
+// ======================================================
+// App
+// ======================================================
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
@@ -74,11 +76,6 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-
-
-
-
-
 if (app.Environment.IsDevelopment())
 {
     await DbSeeder.SeedAsync(app.Services);
@@ -97,5 +94,3 @@ app.Lifetime.ApplicationStarted.Register(() =>
 app.MapControllers();
 
 app.Run();
-
-
