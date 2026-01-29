@@ -47,38 +47,6 @@ steps:
   displayName: "Debug: dotnet version"
 
 # ============================
-# API Build + Publish
-# ============================
-- task: DotNetCoreCLI@2
-  displayName: "Restore API"
-  inputs:
-    command: "restore"
-    projects: "$(apiProject)"
-
-- task: DotNetCoreCLI@2
-  displayName: "Build API"
-  inputs:
-    command: "build"
-    projects: "$(apiProject)"
-    arguments: "--configuration $(buildConfiguration) --no-restore"
-
-- task: DotNetCoreCLI@2
-  displayName: "Publish API"
-  inputs:
-    command: "publish"
-    publishWebProjects: false
-    projects: "$(apiProject)"
-    arguments: "--configuration $(buildConfiguration) --no-build --output $(Build.ArtifactStagingDirectory)/api"
-    zipAfterPublish: false
-
-- task: PublishPipelineArtifact@1
-  displayName: "Publish API artifact"
-  inputs:
-    targetPath: "$(Build.ArtifactStagingDirectory)/api"
-    artifact: "api"
-    publishLocation: "pipeline"
-
-# ============================
 # Web Build (React/Vite)
 # ============================
 - task: NodeTool@0
@@ -98,6 +66,63 @@ steps:
     npm run build
   displayName: "Build Web"
 
+# ============================
+# API Build + Publish (self-contained .NET 10)
+# Then copy web/dist into API wwwroot
+# ============================
+- task: DotNetCoreCLI@2
+  displayName: "Restore API"
+  inputs:
+    command: "restore"
+    projects: "$(apiProject)"
+
+- task: DotNetCoreCLI@2
+  displayName: "Build API"
+  inputs:
+    command: "build"
+    projects: "$(apiProject)"
+    arguments: "--configuration $(buildConfiguration) --no-restore"
+
+- task: DotNetCoreCLI@2
+  displayName: "Publish API (self-contained .NET 10)"
+  inputs:
+    command: "publish"
+    publishWebProjects: false
+    projects: "$(apiProject)"
+    arguments: >
+      --configuration $(buildConfiguration)
+      --no-build
+      -r linux-x64
+      --self-contained true
+      --output $(Build.ArtifactStagingDirectory)/api
+    zipAfterPublish: false
+
+- script: |
+    mkdir -p "$(Build.ArtifactStagingDirectory)/api/wwwroot"
+    cp -R "$(webRoot)/dist/"* "$(Build.ArtifactStagingDirectory)/api/wwwroot/"
+  displayName: "Copy Web dist into API wwwroot"
+
+# ============================
+# ZIP the *contents* of publish output
+# includeRootFolder: false is the key fix
+# ============================
+- task: ArchiveFiles@2
+  displayName: "Zip API publish output"
+  inputs:
+    rootFolderOrFile: "$(Build.ArtifactStagingDirectory)/api"
+    includeRootFolder: false
+    archiveType: "zip"
+    archiveFile: "$(Build.ArtifactStagingDirectory)/api.zip"
+    replaceExistingArchive: true
+
+- task: PublishPipelineArtifact@1
+  displayName: "Publish API zip artifact"
+  inputs:
+    targetPath: "$(Build.ArtifactStagingDirectory)/api.zip"
+    artifact: "api"
+    publishLocation: "pipeline"
+
+# (Optional) keep publishing web artifact too (handy for debugging/downloads)
 - task: PublishPipelineArtifact@1
   displayName: "Publish Web artifact"
   inputs:
@@ -106,8 +131,7 @@ steps:
     publishLocation: "pipeline"
 
 # ============================
-# Deploy API to Azure App Service
-# (This triggers "Authorize resources")
+# Deploy API ZIP to Azure App Service
 # ============================
 - task: DownloadPipelineArtifact@2
   displayName: "Download API artifact"
@@ -116,8 +140,8 @@ steps:
     path: "$(Pipeline.Workspace)/api"
 
 - task: AzureWebApp@1
-  displayName: "Deploy API to Azure Web App"
+  displayName: "Deploy to Azure Web App (ZIP)"
   inputs:
     azureSubscription: "sc-humanbenchmark-prod"
     appName: "humanbenchmark-prod"
-    package: "$(Pipeline.Workspace)/api"
+    package: "$(Pipeline.Workspace)/api/api.zip"
