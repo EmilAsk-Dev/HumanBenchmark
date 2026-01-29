@@ -14,8 +14,14 @@ variables:
   apiOutDir: "$(Build.ArtifactStagingDirectory)/api_out"
 
 steps:
+# ============================
+# Checkout repo
+# ============================
 - checkout: self
 
+# ============================
+# Debug repo structure
+# ============================
 - script: |
     echo "PWD:" && pwd
     echo "Repo root:" && ls -la
@@ -26,6 +32,9 @@ steps:
     test -f global.json && cat global.json || echo "No global.json"
   displayName: "Debug: verify repo paths"
 
+# ============================
+# Install .NET SDK 10.x
+# ============================
 - task: UseDotNet@2
   displayName: "Install .NET SDK $(dotnetSdkVersion)"
   inputs:
@@ -38,9 +47,9 @@ steps:
     dotnet --list-sdks
   displayName: "Debug: dotnet version"
 
-# --------------------
-# Web (Vite)
-# --------------------
+# ============================
+# Web Build (React/Vite)
+# ============================
 - task: NodeTool@0
   displayName: "Use Node.js 20"
   inputs:
@@ -55,9 +64,9 @@ steps:
     npm run build
   displayName: "Build Web"
 
-# --------------------
-# API
-# --------------------
+# ============================
+# API Restore + Publish (self-contained linux-x64)
+# ============================
 - task: DotNetCoreCLI@2
   displayName: "Restore API (linux-x64)"
   inputs:
@@ -78,30 +87,76 @@ steps:
       --output "$(apiOutDir)"
     zipAfterPublish: false
 
-# Copy web build into API wwwroot for same-origin hosting
+# ============================
+# Copy web build into the published API's wwwroot
+# (handles whether publish output is apiOutDir or apiOutDir/Api)
+# ============================
 - script: |
-    mkdir -p "$(apiOutDir)/wwwroot"
-    cp -R "$(webRoot)/dist/"* "$(apiOutDir)/wwwroot/"
+    set -e
+
+    echo "apiOutDir contents:"
+    ls -la "$(apiOutDir)"
+
+    # Determine where the actual publish output ended up
+    PUBLISH_ROOT="$(apiOutDir)"
+    if [ -d "$(apiOutDir)/Api" ]; then
+      PUBLISH_ROOT="$(apiOutDir)/Api"
+      echo "Detected nested publish folder: $PUBLISH_ROOT"
+    else
+      echo "Publish folder: $PUBLISH_ROOT"
+    fi
+
+    mkdir -p "$PUBLISH_ROOT/wwwroot"
+    cp -R "$(webRoot)/dist/"* "$PUBLISH_ROOT/wwwroot/"
+
+    echo "Publish root after copying web:"
+    ls -la "$PUBLISH_ROOT"
+    echo "wwwroot listing:"
+    ls -la "$PUBLISH_ROOT/wwwroot" || true
   displayName: "Copy Web dist into API wwwroot"
 
-# Zip ONLY the contents (no root folder)
+# ============================
+# Normalize deploy root (remove Api nesting if present)
+# Result will ALWAYS be Build.ArtifactStagingDirectory/deploy_root
+# ============================
+- script: |
+    set -e
+
+    rm -rf "$(Build.ArtifactStagingDirectory)/deploy_root"
+    mkdir -p "$(Build.ArtifactStagingDirectory)/deploy_root"
+
+    if [ -d "$(apiOutDir)/Api" ]; then
+      echo "Using $(apiOutDir)/Api as deploy root (flattening)"
+      cp -R "$(apiOutDir)/Api/"* "$(Build.ArtifactStagingDirectory)/deploy_root/"
+    else
+      echo "Using $(apiOutDir) as deploy root"
+      cp -R "$(apiOutDir)/"* "$(Build.ArtifactStagingDirectory)/deploy_root/"
+    fi
+
+    echo "deploy_root contents:"
+    ls -la "$(Build.ArtifactStagingDirectory)/deploy_root"
+  displayName: "Normalize publish output (no Api folder in zip)"
+
+# ============================
+# Zip ONLY the contents (no root folder) -> correct extraction into /home/site/wwwroot
+# ============================
 - task: ArchiveFiles@2
   displayName: "Zip deployment package"
   inputs:
-    rootFolderOrFile: "$(apiOutDir)"
+    rootFolderOrFile: "$(Build.ArtifactStagingDirectory)/deploy_root"
     includeRootFolder: false
     archiveType: "zip"
     archiveFile: "$(Build.ArtifactStagingDirectory)/api.zip"
     replaceExistingArchive: true
 
 - task: PublishPipelineArtifact@1
-  displayName: "Publish API zip artifact"
+  displayName: "Publish deploy zip artifact"
   inputs:
     targetPath: "$(Build.ArtifactStagingDirectory)/api.zip"
     artifact: "api"
     publishLocation: "pipeline"
 
-# (Optional) publish web artifact too
+# (Optional) publish web artifact too for debugging
 - task: PublishPipelineArtifact@1
   displayName: "Publish Web artifact"
   inputs:
@@ -109,11 +164,11 @@ steps:
     artifact: "web"
     publishLocation: "pipeline"
 
-# --------------------
-# Deploy
-# --------------------
+# ============================
+# Deploy ZIP to Azure App Service
+# ============================
 - task: DownloadPipelineArtifact@2
-  displayName: "Download API artifact"
+  displayName: "Download deploy zip"
   inputs:
     artifact: "api"
     path: "$(Pipeline.Workspace)/api"
