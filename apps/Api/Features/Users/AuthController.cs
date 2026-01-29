@@ -6,7 +6,7 @@ using Api.Data;
 namespace Api.Controllers;
 
 [ApiController]
-[Route("auth")]
+[Route("api/auth")]
 public class AuthController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -58,7 +58,7 @@ public class AuthController : ControllerBase
             });
         }
 
-        
+
         await _signInManager.SignInAsync(user, isPersistent: false);
 
         return Ok(new
@@ -90,10 +90,10 @@ public class AuthController : ControllerBase
         if (!result.Succeeded)
             return Unauthorized(new { message = "Invalid credentials" });
 
-        
+
         await _signInManager.SignInAsync(user, isPersistent: false);
 
-        
+
         var token = await _userManager.GenerateUserTokenAsync(
             user,
             TokenOptions.DefaultProvider,

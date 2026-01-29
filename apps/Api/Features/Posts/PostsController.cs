@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Features.Posts;
 
 [ApiController]
-[Route("posts")]
+[Route("api/posts")]
 [Authorize]
 [Tags("Posts")]
 public class PostsController : ControllerBase
