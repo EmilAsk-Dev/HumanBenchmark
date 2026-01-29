@@ -25,7 +25,8 @@ public class AuthController : ControllerBase
         string Password,
         string Username,
         DateTime? DateOfBirth,
-        string? Gender
+        string? Gender,
+        string? AvatarUrl
     );
 
     public record LoginRequest(string Email, string Password);
@@ -35,14 +36,16 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Register([FromBody] RegisterRequest req)
     {
         DateOnly? dateOfBirth = req.DateOfBirth.HasValue
-        ? DateOnly.FromDateTime(req.DateOfBirth.Value)
-        : null;
+            ? DateOnly.FromDateTime(req.DateOfBirth.Value)
+            : null;
+
         var user = new ApplicationUser
         {
             UserName = req.Username,
             Email = req.Email,
             DateOfBirth = dateOfBirth,
             Gender = req.Gender,
+            AvatarUrl = req.AvatarUrl
         };
 
         var result = await _userManager.CreateAsync(user, req.Password);
@@ -55,28 +58,27 @@ public class AuthController : ControllerBase
             });
         }
 
-        // Cookie auth (same as Identity default)
+        
         await _signInManager.SignInAsync(user, isPersistent: false);
 
-        return Ok(new { user.Id, user.Email, user.UserName });
+        return Ok(new
+        {
+            user.Id,
+            user.Email,
+            user.UserName,
+            user.AvatarUrl
+        });
     }
 
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest req)
     {
-        // Find by email
-        var user = await _userManager.FindByEmailAsync(req.Email);
-        var username = await _userManager.FindByNameAsync(req.Email);
-        if (user is null && username is null)
-            return Unauthorized(new { message = "Invalid credentials" });
-
-        if (user is null)
-            user = username;
+        var user = await _userManager.FindByEmailAsync(req.Email)
+                   ?? await _userManager.FindByNameAsync(req.Email);
 
         if (user is null)
             return Unauthorized(new { message = "Invalid credentials" });
-
 
         var result = await _signInManager.PasswordSignInAsync(
             user,
@@ -88,7 +90,10 @@ public class AuthController : ControllerBase
         if (!result.Succeeded)
             return Unauthorized(new { message = "Invalid credentials" });
 
-        // Generate token using Identity's built-in token provider
+        
+        await _signInManager.SignInAsync(user, isPersistent: false);
+
+        
         var token = await _userManager.GenerateUserTokenAsync(
             user,
             TokenOptions.DefaultProvider,
@@ -98,7 +103,7 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             message = "Logged in",
-            token = token,
+            token,
             userId = user.Id,
             email = user.Email
         });
@@ -124,7 +129,8 @@ public class AuthController : ControllerBase
             user.Email,
             user.UserName,
             user.DateOfBirth,
-            user.Gender
+            user.Gender,
+            user.AvatarUrl
         });
     }
 }

@@ -29,6 +29,7 @@ public class ProfileService
         return new ProfileDto(
             userId,
             user.UserName ?? "Unknown",
+            user.AvatarUrl,
             totalSessions,
             streakDays,
             pbByTest,

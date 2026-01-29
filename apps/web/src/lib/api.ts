@@ -4,9 +4,10 @@ export function likeTargetTypeToRoute(type: LikeTargetType): "post" | "comment" 
   return type === LikeTargetType.Post ? "post" : "comment";
 }
 
-// API Configuration - Update these values to match your backend
+// API Configuration
 export const API_CONFIG = {
-  BASE_URL: 'api', // Replace with your API URL
+  
+  BASE_URL: '/api',
   ENDPOINTS: {
     // Auth
     LOGIN: '/auth/login',
@@ -16,7 +17,7 @@ export const API_CONFIG = {
 
     // Users
     USERS: '/users',
-    USER_PROFILE: '/users/:id',
+    USER_PROFILE: '/profile/:id',
 
     // Feed
     FEED: '/feed',
@@ -26,14 +27,14 @@ export const API_CONFIG = {
     UNLIKE: "/likes/:targetType/:targetId",
     COMMENTS: '/posts/:id/comments',
 
-    // Tests
+    // Tests (kan vara 404 om backend inte har dessa ännu)
     TEST_RESULTS: '/tests/results',
     TEST_STATS: '/tests/stats',
     SUBMIT_TEST: '/tests/submit',
     DAILY_TEST: '/tests/daily',
 
-    // Leaderboards
-    LEADERBOARD: '/leaderboard',
+    // Leaderboards (backend kör plural)
+    LEADERBOARD: '/leaderboards',
 
     // Profile
     PROFILE: '/profile',
@@ -75,8 +76,6 @@ async function apiRequest<T>(
       headers,
       credentials: "include",
     });
-
-
 
     if (response.status === 204) {
       return { data: null, error: null };
@@ -141,12 +140,19 @@ export const api = {
     return result;
   },
 
-  async register(email: string, password: string, username: string, dateOfBirth?: Date, gender?: string) {
+  async register(
+    email: string,
+    password: string,
+    username: string,
+    dateOfBirth?: string,
+    gender?: string,
+    avatarUrl?: string
+  ) {
     const result = await apiRequest<{ user: any; token: string }>(
       API_CONFIG.ENDPOINTS.REGISTER,
       {
         method: 'POST',
-        body: JSON.stringify({ email, password, username, dateOfBirth, gender }),
+        body: JSON.stringify({ email, password, username, dateOfBirth, gender, avatarUrl }),
       }
     );
 
@@ -170,9 +176,8 @@ export const api = {
   },
 
   // Feed
-
   async getFeed() {
-    return apiRequest<any[]>(`${API_CONFIG.ENDPOINTS.FEED}`);
+    return apiRequest<any[]>(API_CONFIG.ENDPOINTS.FEED);
   },
 
   async getPosts(filter: string = 'global') {
@@ -184,7 +189,6 @@ export const api = {
       API_CONFIG.ENDPOINTS.LIKE,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           targetType,
           targetId: Number(targetId),
@@ -219,7 +223,7 @@ export const api = {
     );
   },
 
-  // Tests
+  // Tests (om backend saknar routes kommer du få 404 – det är OK)
   async getTestStats() {
     return apiRequest<any[]>(API_CONFIG.ENDPOINTS.TEST_STATS);
   },
@@ -235,10 +239,28 @@ export const api = {
     return apiRequest<any>(API_CONFIG.ENDPOINTS.DAILY_TEST);
   },
 
-  // Leaderboard
+  // Leaderboard (matchar backend: game/scope/timeframe)
   async getLeaderboard(testType: string, timeFilter: string) {
+    const gameMap: Record<string, string> = {
+      reaction: "Reaction",
+      chimp: "ChimpTest",
+      typing: "Typing",
+      sequence: "SequenceTest",
+    };
+
+    const timeframeMap: Record<string, string> = {
+      allTime: "All",
+      daily: "Day",
+      weekly: "Week",
+      monthly: "Month",
+    };
+
+    const game = gameMap[testType] ?? "Reaction";
+    const timeframe = timeframeMap[timeFilter] ?? "All";
+    const scope = "Global";
+
     return apiRequest<any[]>(
-      `${API_CONFIG.ENDPOINTS.LEADERBOARD}?testType=${testType}&timeFilter=${timeFilter}`
+      `${API_CONFIG.ENDPOINTS.LEADERBOARD}?game=${encodeURIComponent(game)}&scope=${encodeURIComponent(scope)}&timeframe=${encodeURIComponent(timeframe)}`
     );
   },
 
