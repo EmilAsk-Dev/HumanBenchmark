@@ -62,7 +62,7 @@ export function Header() {
   const { isDark, toggleTheme } = useTheme();
   const [notifications, setNotifications] = useState(mockNotifications);
   const [isOpen, setIsOpen] = useState(false);
-  
+
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const markAllRead = () => {
@@ -113,9 +113,8 @@ export function Header() {
                   notifications.map(notification => (
                     <div
                       key={notification.id}
-                      className={`flex gap-3 p-3 border-b border-border last:border-0 transition-colors ${
-                        !notification.read ? 'bg-primary/5' : ''
-                      }`}
+                      className={`flex gap-3 p-3 border-b border-border last:border-0 transition-colors ${!notification.read ? 'bg-primary/5' : ''
+                        }`}
                     >
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
                         {notification.icon}
@@ -139,8 +138,8 @@ export function Header() {
               </div>
             </PopoverContent>
           </Popover>
-          
-          <Button variant="ghost" size="icon" onClick={toggleTheme}>
+
+          <Button variant="ghost" size="icon" aria-label="Toggle theme" onClick={toggleTheme}>
             {isDark ? (
               <Sun className="h-5 w-5" />
             ) : (

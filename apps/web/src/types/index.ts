@@ -37,6 +37,8 @@ export interface Comment {
   createdAt: Date;
   likes: number;
   isLiked?: boolean;
+  parentCommentId?: string | null;
+  replies?: Comment[];
 }
 
 export interface LeaderboardEntry {

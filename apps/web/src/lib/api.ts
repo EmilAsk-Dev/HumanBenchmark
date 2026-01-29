@@ -213,12 +213,15 @@ export const api = {
     );
   },
 
-  async addComment(postId: string, content: string, replyTo?: string) {
+  async addComment(postId: string, content: string, parentCommentId?: string) {
     return apiRequest<any>(
       replaceParams(API_CONFIG.ENDPOINTS.COMMENTS, { id: postId }),
       {
-        method: 'POST',
-        body: JSON.stringify({ content, replyTo }),
+        method: "POST",
+        body: JSON.stringify({
+          content,
+          parentCommentId: parentCommentId ? Number(parentCommentId) : null,
+        }),
       }
     );
   },
