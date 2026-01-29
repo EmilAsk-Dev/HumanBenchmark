@@ -8,6 +8,9 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ======================================================
+// Hosting / Port (Azure App Service sets PORT)
+// ======================================================
 var port = Environment.GetEnvironmentVariable("PORT");
 
 if (!string.IsNullOrWhiteSpace(port))
@@ -19,12 +22,17 @@ else if (builder.Environment.IsDevelopment())
     builder.WebHost.UseUrls("http://0.0.0.0:5014");
 }
 
+// ======================================================
+// Env
+// ======================================================
 if (builder.Environment.IsDevelopment())
 {
     Env.Load();
 }
 
-
+// ======================================================
+// Services
+// ======================================================
 builder.Services.AddOpenApi();
 
 builder.Services.AddScoped<Api.Features.Attempts.Services.AttemptWriter>();
@@ -41,8 +49,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 }
 
-builder.Services.AddDbContext<ApplicationDbContext>(opt =>
-    opt.UseSqlServer(connectionString));
+builder.Services.AddDbContext<ApplicationDbContext>(opt => opt.UseSqlServer(connectionString));
 
 builder.Services
     .AddIdentityApiEndpoints<ApplicationUser>()
@@ -57,6 +64,8 @@ builder.Services.AddAuthorization();
 // ======================================================
 var app = builder.Build();
 
+// If you're behind Azure's proxy, HTTPS redirection can warn.
+// It's okay to keep it, but if you see issues you can remove it.
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
@@ -66,7 +75,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapIdentityApi<ApplicationUser>();
+app.MapControllers();
 
+// ======================================================
+// Swagger/Scalar (dev only)
+// ======================================================
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi("/openapi/{documentName}.json");
@@ -76,6 +89,17 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+// ======================================================
+// Serve React from wwwroot (same origin)
+// IMPORTANT: This requires your pipeline to copy apps/web/dist -> API publish wwwroot
+// ======================================================
+app.UseDefaultFiles();     // serves /index.html automatically
+app.UseStaticFiles();      // serves /assets/* etc
+app.MapFallbackToFile("index.html"); // React Router support
+
+// ======================================================
+// Seeder (dev only)
+// ======================================================
 if (app.Environment.IsDevelopment())
 {
     await DbSeeder.SeedAsync(app.Services);
@@ -90,7 +114,5 @@ app.Lifetime.ApplicationStarted.Register(() =>
     if (first is not null && app.Environment.IsDevelopment())
         Console.WriteLine($"Scalar: {first}/");
 });
-
-app.MapControllers();
 
 app.Run();
