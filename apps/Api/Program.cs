@@ -43,11 +43,12 @@ builder.Services.AddScoped<Api.Features.Leaderboards.LeaderboardService>();
 builder.Services.AddScoped<Api.Features.Users.ProfileService>();
 builder.Services.AddScoped<Api.Features.Comments.CommentService>();
 
-var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
+var connectionString =
+    Environment.GetEnvironmentVariable("CONNECTION_STRING")
+    ?? Environment.GetEnvironmentVariable("SQLCONNSTR_CONNECTION_STRING");
+
 if (string.IsNullOrWhiteSpace(connectionString))
-{
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-}
 
 builder.Services.AddDbContext<ApplicationDbContext>(opt => opt.UseSqlServer(connectionString));
 
