@@ -63,7 +63,8 @@ public class FeedService
             c.Content,
             c.CreatedAt,
             c.Likes.Count,
-            c.Likes.Any(l => l.UserId == me)
+            c.Likes.Any(l => l.UserId == me),
+            c.ParentCommentId
             )).ToList()
     ))
     .ToListAsync();

@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Features.Leaderboards;
 
 [ApiController]
-[Route("leaderboards")]
+[Route("api/leaderboards")]
 [Authorize]
 [Tags("Leaderboards")]
 public class LeaderboardsController : ControllerBase

@@ -12,26 +12,34 @@ export function useProfile() {
   const fetchProfile = useCallback(async (userId?: string) => {
     setIsLoading(true);
     setError(null);
-    
-    const [profileResult, badgesResult, statsResult] = await Promise.all([
-      api.getProfile(userId),
-      api.getBadges(),
-      api.getTestStats(),
-    ]);
-    
+
+    const profileResult = await api.getProfile(userId);
+
     if (profileResult.error) {
       setError(profileResult.error);
       setIsLoading(false);
       return;
     }
-    
-    setUser(profileResult.data);
-    setBadges(badgesResult.data || []);
-    setStats(statsResult.data || []);
+
+    const p = profileResult.data as any;
+
+    setUser({
+      id: p.userId ?? p.id,
+      username: p.userName ?? p.username,
+      displayName: p.displayName ?? p.userName ?? p.username,
+      avatarUrl: p.avatarUrl ?? p.avatar ?? undefined,
+      avatar: p.avatar ?? p.avatarUrl ?? undefined,
+      createdAt: p.createdAt ?? new Date().toISOString(),
+      totalSessions: p.totalSessions ?? 0,
+      streak: p.streakDays ?? p.streak ?? 0,
+    } as User);
+
+    setBadges([]);
+    setStats([]);
+
     setIsLoading(false);
   }, []);
 
-  // Fetch profile on mount
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
@@ -39,16 +47,16 @@ export function useProfile() {
   const updateProfile = useCallback(async (updates: Partial<User>) => {
     setIsLoading(true);
     setError(null);
-    
+
     const { data, error: apiError } = await api.updateProfile(updates);
-    
+
     if (apiError) {
       setError(apiError);
       setIsLoading(false);
       return { error: apiError };
     }
-    
-    setUser(prev => prev ? { ...prev, ...data } : data);
+
+    setUser(prev => (prev ? { ...prev, ...(data as any) } : (data as any)));
     setIsLoading(false);
     return { error: null };
   }, []);

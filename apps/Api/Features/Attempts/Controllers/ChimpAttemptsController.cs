@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Features.Attempts.Controllers;
 
 [ApiController]
-[Route("attempts/chimp")]
+[Route("api/attempts/chimp")]
 [Authorize]
 [Tags("Attempts")]
 public class ChimpAttemptsController : ControllerBase
