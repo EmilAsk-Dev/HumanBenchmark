@@ -31,12 +31,6 @@ export default function Profile() {
   const { logout, isAuthenticated } = useAuth();
   const [showFriendSearch, setShowFriendSearch] = useState(false);
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-    }
-  }, [isAuthenticated, navigate]);
-
   if (isLoading) {
     return (
       <AppLayout>
