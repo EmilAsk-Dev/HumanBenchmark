@@ -5,35 +5,35 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Friend } from "@/types/friends";
-import { mockSearchResults } from "@/lib/mockFriends";
 import { cn } from "@/lib/utils";
 
 interface FriendSearchProps {
   onClose: () => void;
+  onAddFriend?: (friend: Friend) => void;
 }
 
-export function FriendSearch({ onClose }: FriendSearchProps) {
+export function FriendSearch({ onClose, onAddFriend }: FriendSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Friend[]>([]);
   const [sentRequests, setSentRequests] = useState<Set<string>>(new Set());
+  const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = (value: string) => {
+  const handleSearch = async (value: string) => {
     setQuery(value);
     if (value.length > 0) {
-      // Simulate search - in real app this would be an API call
-      const filtered = mockSearchResults.filter(
-        (f) =>
-          f.username.toLowerCase().includes(value.toLowerCase()) ||
-          f.displayName.toLowerCase().includes(value.toLowerCase()),
-      );
-      setResults(filtered);
+      setIsSearching(true);
+      // In real app this would be an API call
+      // For now, return empty results since we're not using mock data
+      setResults([]);
+      setIsSearching(false);
     } else {
       setResults([]);
     }
   };
 
-  const sendFriendRequest = (friendId: string) => {
-    setSentRequests((prev) => new Set([...prev, friendId]));
+  const sendFriendRequest = (friend: Friend) => {
+    setSentRequests((prev) => new Set([...prev, friend.id]));
+    onAddFriend?.(friend);
     // In real app, this would be an API call
   };
 
@@ -92,7 +92,7 @@ export function FriendSearch({ onClose }: FriendSearchProps) {
                 <Button
                   size="sm"
                   variant={sentRequests.has(user.id) ? "secondary" : "default"}
-                  onClick={() => sendFriendRequest(user.id)}
+                  onClick={() => sendFriendRequest(user)}
                   disabled={sentRequests.has(user.id)}
                   className={cn(
                     sentRequests.has(user.id) &&
@@ -113,13 +113,13 @@ export function FriendSearch({ onClose }: FriendSearchProps) {
           </motion.div>
         )}
 
-        {query.length > 0 && results.length === 0 && (
+        {query.length > 0 && results.length === 0 && !isSearching && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="text-center text-muted-foreground py-4"
           >
-            Inga användare hittades
+            Sök efter användare med deras användarnamn
           </motion.p>
         )}
       </AnimatePresence>

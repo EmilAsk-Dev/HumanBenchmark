@@ -8,18 +8,14 @@ import { FriendSearch } from "@/components/friends/FriendSearch";
 import { FriendsList } from "@/components/friends/FriendsList";
 import { FriendRequests } from "@/components/friends/FriendRequests";
 import { MessageSheet } from "@/components/friends/MessageSheet";
-import { Friend, FriendRequest } from "@/types/friends";
-import {
-  mockFriends,
-  mockFriendRequests,
-  mockConversations,
-} from "@/lib/mockFriends";
+import { Friend, FriendRequest, Conversation, Message } from "@/types/friends";
 
 export default function Friends() {
   const navigate = useNavigate();
   const [showSearch, setShowSearch] = useState(false);
-  const [friends, setFriends] = useState<Friend[]>(mockFriends);
-  const [requests, setRequests] = useState<FriendRequest[]>(mockFriendRequests);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [requests, setRequests] = useState<FriendRequest[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [isMessageOpen, setIsMessageOpen] = useState(false);
 
@@ -40,8 +36,14 @@ export default function Friends() {
     setIsMessageOpen(true);
   };
 
+  const handleAddFriend = (friend: Friend) => {
+    if (!friends.find((f) => f.id === friend.id)) {
+      setFriends((prev) => [...prev, friend]);
+    }
+  };
+
   const selectedConversation = selectedFriend
-    ? mockConversations.find((c) => c.friend.id === selectedFriend.id)
+    ? conversations.find((c) => c.friend.id === selectedFriend.id)
     : undefined;
 
   const onlineFriends = friends.filter(
@@ -85,7 +87,12 @@ export default function Friends() {
         </motion.p>
 
         <AnimatePresence>
-          {showSearch && <FriendSearch onClose={() => setShowSearch(false)} />}
+          {showSearch && (
+            <FriendSearch
+              onClose={() => setShowSearch(false)}
+              onAddFriend={handleAddFriend}
+            />
+          )}
         </AnimatePresence>
 
         <FriendRequests
