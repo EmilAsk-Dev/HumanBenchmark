@@ -3,8 +3,9 @@ export interface User {
   id: string;
   username: string;
   displayName: string;
-  avatar: string;
-  createdAt: Date;
+  avatarUrl?: string;
+  avatar?: string;
+  createdAt: string | Date;
   streak: number;
   totalSessions: number;
 }
@@ -36,6 +37,8 @@ export interface Comment {
   createdAt: Date;
   likes: number;
   isLiked?: boolean;
+  parentCommentId?: string | null;
+  replies?: Comment[];
 }
 
 export interface LeaderboardEntry {

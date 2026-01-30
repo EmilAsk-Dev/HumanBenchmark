@@ -125,6 +125,7 @@ export default function Profile() {
             </div>
             <div className="text-xs text-muted-foreground">Sessions</div>
           </div>
+
           <div className="p-4 rounded-xl bg-card border border-border text-center">
             <Flame className="h-5 w-5 mx-auto mb-1 text-orange-500" />
             <div className="text-2xl font-bold text-foreground">
@@ -132,6 +133,7 @@ export default function Profile() {
             </div>
             <div className="text-xs text-muted-foreground">Day Streak</div>
           </div>
+
           <div className="p-4 rounded-xl bg-card border border-border text-center">
             <Crown className="h-5 w-5 mx-auto mb-1 text-yellow-500" />
             <div className="text-2xl font-bold text-foreground">
@@ -167,8 +169,11 @@ export default function Profile() {
                 </span>
               </div>
             ))}
+
             {badges.length === 0 && (
-              <p className="text-sm text-muted-foreground">No badges yet</p>
+              <p className="text-sm text-muted-foreground">
+                No badges yet
+              </p>
             )}
           </div>
         </div>
@@ -176,6 +181,7 @@ export default function Profile() {
         {/* Test Stats */}
         <div className="mb-6">
           <h2 className="font-bold text-foreground mb-3">Your Stats</h2>
+
           {stats.length > 0 ? (
             <div className="space-y-3">
               {stats.map((stat) => {
@@ -193,6 +199,7 @@ export default function Profile() {
                         Top {100 - stat.percentile}%
                       </span>
                     </div>
+
                     <div className="grid grid-cols-3 gap-2 text-center text-sm">
                       <div>
                         <div className="font-bold text-foreground">
@@ -202,6 +209,7 @@ export default function Profile() {
                           Best
                         </div>
                       </div>
+
                       <div>
                         <div className="font-bold text-foreground">
                           {stat.median}
@@ -210,6 +218,7 @@ export default function Profile() {
                           Median
                         </div>
                       </div>
+
                       <div>
                         <div className="font-bold text-foreground">
                           {stat.totalAttempts}
