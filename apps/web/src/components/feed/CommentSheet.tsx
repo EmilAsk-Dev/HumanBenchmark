@@ -104,7 +104,7 @@ export function CommentSheet({
   onClose,
   comments,
   onAddComment,
-  postId, 
+  postId,
   onLike,
 }: CommentSheetProps) {
   const [newComment, setNewComment] = useState("");
@@ -120,7 +120,7 @@ export function CommentSheet({
   const handleReply = (commentId: string, username: string) => {
     setReplyingTo({ id: commentId, username });
 
-    
+
     setNewComment(prev => {
       const cleaned = prev.trim().length ? prev : "";
       if (cleaned.startsWith(`@${username}`)) return cleaned;

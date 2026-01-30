@@ -2,6 +2,7 @@ using Api.Data;
 using Api.Features.Comments;
 using Api.Features.Feed.Dtos;
 using Microsoft.EntityFrameworkCore;
+using Api.Features.Users.Dtos;
 
 namespace Api.Features.Feed;
 
@@ -39,7 +40,7 @@ public class FeedService
                 new UserDto(
                     p.User.Id,
                     p.User.UserName!,
-                    p.User.UserName!
+                    p.User.AvatarUrl
 
         ),
         new TestRunDto(
@@ -59,7 +60,11 @@ public class FeedService
             p.Comments.Select(c => new CommentDto(
             c.Id,
             c.PostId,
-            c.UserId,
+            new UserDto(
+                c.User.Id,
+                c.User.UserName!,
+                c.User.AvatarUrl
+            ),
             c.Content,
             c.CreatedAt,
             c.Likes.Count,

@@ -27,9 +27,7 @@ public class CommentsController : ControllerBase
 
     [HttpPost("api/posts/{postId}/comments")]
     [Tags("Comments")]
-    public async Task<ActionResult<CommentDto>> Add(
-        long postId,
-        [FromBody] CreateCommentRequest req)
+    public async Task<ActionResult<CommentDto>> Add(long postId, [FromBody] CreateCommentRequest req)
     {
         var created = await _comments.AddAsync(postId, Me, req);
         if (created is null) return NotFound();

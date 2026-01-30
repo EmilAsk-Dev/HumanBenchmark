@@ -1,7 +1,7 @@
 using Api.Data;
 using Api.Domain;
 using Microsoft.EntityFrameworkCore;
-
+using Api.Features.Users.Dtos;
 namespace Api.Features.Comments;
 
 public class CommentService
@@ -25,11 +25,15 @@ public class CommentService
             .Skip(skip)
             .Take(take)
             .Select(c => new CommentDto(
-                c.Id,
-                c.PostId,
-                c.UserId,
-                c.Content,
-                c.CreatedAt,
+                Id: c.Id,
+                PostId: c.PostId,
+                User: new UserDto(
+                    Id: c.User.Id,
+                    UserName: c.User.UserName!,
+                    AvatarUrl: c.User.AvatarUrl
+                ),
+                Content: c.Content,
+                CreatedAt: c.CreatedAt,
                 LikeCount: c.Likes.Count,
                 IsLiked: c.Likes.Any(l => l.UserId == me),
                 ParentCommentId: c.ParentCommentId
@@ -71,18 +75,26 @@ public class CommentService
         _db.Comments.Add(comment);
         await _db.SaveChangesAsync();
 
-        return new CommentDto(
-            comment.Id,
-            comment.PostId,
-            comment.UserId,
-            comment.Content,
-            comment.CreatedAt,
-            LikeCount: 0,
-            IsLiked: false,
-            ParentCommentId: parentId
-        );
+        // ✅ Re-query so User is populated and returned from DB
+        return await _db.Comments
+            .AsNoTracking()
+            .Where(c => c.Id == comment.Id)
+            .Select(c => new CommentDto(
+                Id: c.Id,
+                PostId: c.PostId,
+                User: new UserDto(
+                    Id: c.User.Id,
+                    UserName: c.User.UserName!,
+                    AvatarUrl: c.User.AvatarUrl
+                ),
+                Content: c.Content,
+                CreatedAt: c.CreatedAt,
+                LikeCount: 0,
+                IsLiked: false,
+                ParentCommentId: c.ParentCommentId
+            ))
+            .FirstAsync();
     }
-
 
     public async Task<bool> DeleteAsync(long commentId, string me, bool allowAdmins = false)
     {
@@ -99,31 +111,9 @@ public class CommentService
 
     public async Task<(int likeCount, bool isLiked)> ToggleLikeAsync(long commentId, string me)
     {
-        var commentExists = await _db.Comments.AsNoTracking().AnyAsync(c => c.Id == commentId);
-        if (!commentExists) throw new ArgumentException("Comment not found.");
-
-        var existing = await _db.Comments
-            .FirstOrDefaultAsync(l => l.Id == commentId && l.UserId == me);
-
-        if (existing is null)
-        {
-            _db.Comments.Add(new Comment
-            {
-                Id = commentId,
-                UserId = me,
-                CreatedAt = DateTime.UtcNow
-            });
-        }
-        else
-        {
-            _db.Comments.Remove(existing);
-        }
-
-        await _db.SaveChangesAsync();
-
-        var likeCount = await _db.Comments.CountAsync(l => l.Id == commentId);
-        var isLiked = await _db.Comments.AnyAsync(l => l.Id == commentId && l.UserId == me);
-
-        return (likeCount, isLiked);
+        // ⚠️ FIX ME: This must use your Like table, not Comments.
+        // I can't write the correct version without seeing Api.Domain.Like.
+        // For now, throw so you don’t corrupt data:
+        throw new NotImplementedException("ToggleLikeAsync must be implemented using the Like entity/table.");
     }
 }
