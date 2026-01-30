@@ -1,60 +1,55 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Bell, Moon, Sun, X, Zap, Brain, Keyboard, Grid3x3 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useTheme } from '@/hooks/useTheme';
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Bell, Moon, Sun, X, MessageCircle, UserPlus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useTheme } from "@/hooks/useTheme";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
+} from "@/components/ui/popover";
 
 interface Notification {
   id: string;
-  type: 'achievement' | 'friend' | 'challenge';
+  type: "message" | "friend_request";
   title: string;
   message: string;
   time: string;
   read: boolean;
   icon: React.ReactNode;
+  fromUserId?: string;
 }
 
 const mockNotifications: Notification[] = [
   {
-    id: '1',
-    type: 'achievement',
-    title: 'New Badge Unlocked!',
-    message: 'You earned "Speed Demon" for sub-200ms reaction time',
-    time: '2h ago',
+    id: "1",
+    type: "message",
+    title: "Nytt meddelande från Emma",
+    message: "Absolut, jag är redo!",
+    time: "3 min sedan",
     read: false,
-    icon: <Zap className="h-4 w-4 text-yellow-500" />,
+    icon: <MessageCircle className="h-4 w-4 text-primary" />,
+    fromUserId: "1",
   },
   {
-    id: '2',
-    type: 'friend',
-    title: 'Emma beat your score!',
-    message: 'Chimp Test: Level 14 (you: 12)',
-    time: '5h ago',
+    id: "2",
+    type: "friend_request",
+    title: "Ny vänförfrågan",
+    message: "Ryan Kim vill bli din vän",
+    time: "30 min sedan",
     read: false,
-    icon: <Brain className="h-4 w-4 text-orange-500" />,
+    icon: <UserPlus className="h-4 w-4 text-green-500" />,
+    fromUserId: "8",
   },
   {
-    id: '3',
-    type: 'challenge',
-    title: 'Daily Challenge Available',
-    message: 'Today: Typing Speed - 1,247 players competing',
-    time: '8h ago',
+    id: "3",
+    type: "message",
+    title: "Marcus delade ett resultat",
+    message: "Chimp Test: Level 14 🧠",
+    time: "1 tim sedan",
     read: true,
-    icon: <Keyboard className="h-4 w-4 text-primary" />,
-  },
-  {
-    id: '4',
-    type: 'friend',
-    title: 'Marcus started following you',
-    message: 'Check out their profile',
-    time: '1d ago',
-    read: true,
-    icon: <Grid3x3 className="h-4 w-4 text-secondary" />,
+    icon: <MessageCircle className="h-4 w-4 text-primary" />,
+    fromUserId: "2",
   },
 ];
 
@@ -63,14 +58,14 @@ export function Header() {
   const [notifications, setNotifications] = useState(mockNotifications);
   const [isOpen, setIsOpen] = useState(false);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const markAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
   const clearNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
   return (
@@ -80,7 +75,9 @@ export function Header() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
             <span className="text-lg font-bold text-primary-foreground">H</span>
           </div>
-          <span className="text-xl font-bold text-gradient-primary">Human Bench</span>
+          <span className="text-xl font-bold text-gradient-primary">
+            Human Bench
+          </span>
         </Link>
 
         <div className="flex items-center gap-2">
@@ -99,7 +96,12 @@ export function Header() {
               <div className="flex items-center justify-between border-b border-border p-3">
                 <h3 className="font-semibold text-foreground">Notifications</h3>
                 {unreadCount > 0 && (
-                  <Button variant="ghost" size="sm" className="text-xs" onClick={markAllRead}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                    onClick={markAllRead}
+                  >
                     Mark all read
                   </Button>
                 )}
@@ -110,19 +112,26 @@ export function Header() {
                     No notifications
                   </div>
                 ) : (
-                  notifications.map(notification => (
+                  notifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`flex gap-3 p-3 border-b border-border last:border-0 transition-colors ${!notification.read ? 'bg-primary/5' : ''
-                        }`}
+                      className={`flex gap-3 p-3 border-b border-border last:border-0 transition-colors ${
+                        !notification.read ? "bg-primary/5" : ""
+                      }`}
                     >
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
                         {notification.icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">{notification.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">{notification.message}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {notification.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {notification.message}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {notification.time}
+                        </p>
                       </div>
                       <Button
                         variant="ghost"
@@ -139,7 +148,7 @@ export function Header() {
             </PopoverContent>
           </Popover>
 
-          <Button variant="ghost" size="icon" aria-label="Toggle theme" onClick={toggleTheme}>
+          <Button variant="ghost" size="icon" onClick={toggleTheme}>
             {isDark ? (
               <Sun className="h-5 w-5" />
             ) : (

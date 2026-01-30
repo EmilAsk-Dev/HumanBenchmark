@@ -1,11 +1,21 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { useProfile } from '@/hooks/useProfile';
-import { useAuth } from '@/hooks/useAuth';
-import { TEST_CONFIGS } from '@/types';
-import { Crown, Flame, Gamepad2, LogOut, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from "@/hooks/useAuth";
+import { TEST_CONFIGS } from "@/types";
+import {
+  Crown,
+  Flame,
+  Gamepad2,
+  LogOut,
+  Loader2,
+  Search,
+  Users,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { FriendSearchProfile } from "@/components/profile/FriendSearchProfile";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -15,19 +25,19 @@ export default function Profile() {
     badges,
     unlockedBadges,
     lockedBadges,
-    isLoading: profileLoading,
+    isLoading,
     error,
   } = useProfile();
-
-  const { logout, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { logout, isAuthenticated } = useAuth();
+  const [showFriendSearch, setShowFriendSearch] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate('/login');
+    if (!isAuthenticated) {
+      navigate("/login");
     }
-  }, [isAuthenticated, authLoading, navigate]);
+  }, [isAuthenticated, navigate]);
 
-  if (profileLoading) {
+  if (isLoading) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center h-64">
@@ -42,12 +52,12 @@ export default function Profile() {
       <AppLayout>
         <div className="p-4 text-center">
           <p className="text-muted-foreground">
-            {error || 'Could not load profile'}
+            {error || "Could not load profile"}
           </p>
           <Button
             variant="outline"
             className="mt-4"
-            onClick={() => navigate('/login')}
+            onClick={() => navigate("/login")}
           >
             Login
           </Button>
@@ -58,27 +68,50 @@ export default function Profile() {
 
   return (
     <AppLayout>
-      <div className="p-4">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          {user.avatarUrl ? (
-            <img
-              src={user.avatarUrl}
-              alt="Avatar"
-              className="w-20 h-20 rounded-full border-4 border-primary/30 object-cover"
-            />
-          ) : (
-            <div className="w-20 h-20 rounded-full border-4 border-primary/30 flex items-center justify-center text-xl font-bold">
-              {(user.displayName?.[0] ??
-                user.username?.[0] ??
-                '?').toUpperCase()}
-            </div>
-          )}
+      <div className="p-4 pb-24">
+        {/* Header with search */}
+        <div className="flex items-center justify-between mb-4">
+          <motion.h1
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-2xl font-bold text-foreground"
+          >
+            Profil
+          </motion.h1>
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowFriendSearch(!showFriendSearch)}
+              className={
+                showFriendSearch ? "text-primary" : "text-muted-foreground"
+              }
+            >
+              <Users className="h-5 w-5" />
+            </Button>
+          </motion.div>
+        </div>
 
+        <AnimatePresence>
+          {showFriendSearch && (
+            <FriendSearchProfile onClose={() => setShowFriendSearch(false)} />
+          )}
+        </AnimatePresence>
+
+        {/* Profile Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <img
+            src={user.avatar}
+            alt=""
+            className="w-20 h-20 rounded-full border-4 border-primary/30"
+          />
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
+            <h2 className="text-xl font-bold text-foreground">
               {user.displayName}
-            </h1>
+            </h2>
             <p className="text-muted-foreground">@{user.username}</p>
           </div>
         </div>
@@ -125,7 +158,6 @@ export default function Profile() {
                 </span>
               </div>
             ))}
-
             {lockedBadges.map((badge) => (
               <div
                 key={badge.id}
@@ -212,7 +244,7 @@ export default function Profile() {
           className="w-full gap-2"
           onClick={() => {
             logout();
-            navigate('/login');
+            navigate("/login");
           }}
         >
           <LogOut className="h-4 w-4" />
