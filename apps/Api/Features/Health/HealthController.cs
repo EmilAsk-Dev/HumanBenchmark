@@ -4,7 +4,7 @@ using Api.Features.Health.Dtos;
 namespace Api.Features.Health;
 
 [ApiController]
-[Route("health")]
+[Route("api/health")]
 [Tags("Health")]
 public class HealthController : ControllerBase
 {

@@ -352,41 +352,108 @@ public static class DbSeeder
     }
 
     private static async Task EnsureMinimumCommentsAsync(
-        ApplicationDbContext db,
-        string bobId,
-        string claraId,
-        DateTime now)
+    ApplicationDbContext db,
+    string bobId,
+    string claraId,
+    DateTime now)
     {
         var existing = await db.Comments.CountAsync();
-        if (existing >= 2) return;
+        if (existing >= 6) return;
 
-        var posts = await db.Posts.OrderBy(p => p.Id).Select(p => p.Id).ToListAsync();
+        var posts = await db.Posts
+            .OrderBy(p => p.Id)
+            .Select(p => p.Id)
+            .ToListAsync();
+
         if (posts.Count == 0) return;
 
         var targetPost1 = posts[0];
         var targetPost2 = posts.Count > 1 ? posts[1] : posts[0];
 
-        if (await db.Comments.CountAsync() < 2)
+        // -----------------------------
+        // Post 1 Thread
+        // -----------------------------
+        if (await db.Comments.CountAsync() < 3)
         {
-            db.Comments.Add(new Comment
+            // Top-level comment
+            var root1 = new Comment
             {
                 PostId = targetPost1,
                 UserId = bobId,
-                Content = "Nice run — keep it up.",
-                CreatedAt = now.AddMinutes(-32)
-            });
+                Content = "Nice run — keep it up!",
+                CreatedAt = now.AddMinutes(-40)
+            };
+
+            db.Comments.Add(root1);
+            await db.SaveChangesAsync();
+
+            // Reply from Clara
+            var reply1 = new Comment
+            {
+                PostId = targetPost1,
+                UserId = claraId,
+                ParentCommentId = root1.Id,
+                Content = "Totally agree — great pace 💪",
+                CreatedAt = now.AddMinutes(-38)
+            };
+
+            db.Comments.Add(reply1);
+            await db.SaveChangesAsync();
+
+            // Reply back from Bob
+            var reply2 = new Comment
+            {
+                PostId = targetPost1,
+                UserId = bobId,
+                ParentCommentId = reply1.Id,
+                Content = "Thanks! Training is paying off 😄",
+                CreatedAt = now.AddMinutes(-36)
+            };
+
+            db.Comments.Add(reply2);
             await db.SaveChangesAsync();
         }
 
-        if (await db.Comments.CountAsync() < 2)
+        // -----------------------------
+        // Post 2 Thread
+        // -----------------------------
+        if (await db.Comments.CountAsync() < 6)
         {
-            db.Comments.Add(new Comment
+            // Top-level comment
+            var root2 = new Comment
             {
                 PostId = targetPost2,
                 UserId = claraId,
                 Content = "Solid score!",
-                CreatedAt = now.AddMinutes(-31)
-            });
+                CreatedAt = now.AddMinutes(-30)
+            };
+
+            db.Comments.Add(root2);
+            await db.SaveChangesAsync();
+
+            // Reply from Bob
+            var reply3 = new Comment
+            {
+                PostId = targetPost2,
+                UserId = bobId,
+                ParentCommentId = root2.Id,
+                Content = "Yeah that was impressive 🔥",
+                CreatedAt = now.AddMinutes(-28)
+            };
+
+            db.Comments.Add(reply3);
+            await db.SaveChangesAsync();
+
+            var reply4 = new Comment
+            {
+                PostId = targetPost2,
+                UserId = claraId,
+                ParentCommentId = reply3.Id,
+                Content = "Next goal: break 100 😅",
+                CreatedAt = now.AddMinutes(-26)
+            };
+
+            db.Comments.Add(reply4);
             await db.SaveChangesAsync();
         }
     }

@@ -24,14 +24,16 @@ export function useProfile() {
     const p = profileResult.data as any;
 
     setUser({
-      id: p.userId,
-      username: p.userName,
-      displayName: p.userName,
+      id: p.userId ?? p.id,
+      username: p.userName ?? p.username,
+      displayName: p.displayName ?? p.userName ?? p.username,
+      avatarUrl: p.avatarUrl ?? p.avatar ?? undefined,
+      avatar: p.avatar ?? p.avatarUrl ?? undefined,
+      createdAt: p.createdAt ?? new Date().toISOString(),
       totalSessions: p.totalSessions ?? 0,
-      streak: p.streakDays ?? 0,
+      streak: p.streakDays ?? p.streak ?? 0,
     } as User);
 
-    // tills API har stöd för detta
     setBadges([]);
     setStats([]);
 
@@ -54,7 +56,7 @@ export function useProfile() {
       return { error: apiError };
     }
 
-    setUser(prev => (prev ? { ...prev, ...data } : data));
+    setUser(prev => (prev ? { ...prev, ...(data as any) } : (data as any)));
     setIsLoading(false);
     return { error: null };
   }, []);

@@ -31,7 +31,8 @@ public class CommentService
                 c.Content,
                 c.CreatedAt,
                 LikeCount: c.Likes.Count,
-                IsLiked: c.Likes.Any(l => l.UserId == me)
+                IsLiked: c.Likes.Any(l => l.UserId == me),
+                ParentCommentId: c.ParentCommentId
             ))
             .ToListAsync();
     }
@@ -42,16 +43,20 @@ public class CommentService
         if (content.Length == 0) throw new ArgumentException("Comment content is required.");
         if (content.Length > 2000) throw new ArgumentException("Comment is too long (max 2000 chars).");
 
-        if (req.ReplyToCommentId is not null)
+        long? parentId = null;
+
+        if (req.ParentCommentId is not null)
         {
             var parent = await _db.Comments
                 .AsNoTracking()
-                .Where(c => c.Id == req.ReplyToCommentId.Value)
+                .Where(c => c.Id == req.ParentCommentId.Value)
                 .Select(c => new { c.Id, c.PostId })
                 .FirstOrDefaultAsync();
 
             if (parent is null) throw new ArgumentException("Reply target not found.");
             if (parent.PostId != postId) throw new ArgumentException("Reply target must be in same post.");
+
+            parentId = parent.Id;
         }
 
         var comment = new Comment
@@ -59,7 +64,8 @@ public class CommentService
             PostId = postId,
             UserId = me,
             Content = content,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            ParentCommentId = parentId
         };
 
         _db.Comments.Add(comment);
@@ -72,9 +78,11 @@ public class CommentService
             comment.Content,
             comment.CreatedAt,
             LikeCount: 0,
-            IsLiked: false
+            IsLiked: false,
+            ParentCommentId: parentId
         );
     }
+
 
     public async Task<bool> DeleteAsync(long commentId, string me, bool allowAdmins = false)
     {

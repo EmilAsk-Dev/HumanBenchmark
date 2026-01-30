@@ -14,6 +14,15 @@ import { useAuth } from '@/hooks/useAuth';
 
 type AuthMode = 'login' | 'register';
 
+const AVATARS = [
+  '/avatars/avatar-1.png',
+  '/avatars/avatar-2.png',
+  '/avatars/avatar-3.png',
+  '/avatars/avatar-4.png',
+  '/avatars/avatar-5.png',
+  '/avatars/avatar-6.png',
+];
+
 export default function Login() {
   const navigate = useNavigate();
   const { login, register, isLoading, error: authError, clearError, isAuthenticated } = useAuth();
@@ -25,6 +34,8 @@ export default function Login() {
   const [username, setUsername] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>();
   const [gender, setGender] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string>(AVATARS[0]); 
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [validationError, setValidationError] = useState('');
@@ -68,7 +79,20 @@ export default function Login() {
         setValidationError('Please select your gender');
         return;
       }
-      const result = await register(email, password, username, dateOfBirth.toISOString(), gender);
+      if (!avatarUrl) {
+        setValidationError('Please select an avatar');
+        return;
+      }
+
+      const result = await register(
+        email,
+        password,
+        username,
+        dateOfBirth.toISOString(),
+        gender,
+        avatarUrl
+      );
+
       if (!result.error) {
         navigate('/');
       }
@@ -76,24 +100,19 @@ export default function Login() {
   };
 
   const displayError = validationError || authError;
+
   return (
     <div className="min-h-screen flex flex-col bg-background overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-primary/20 blur-3xl"
-          animate={{
-            x: [0, 30, 0],
-            y: [0, -20, 0],
-          }}
+          animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
           transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
         />
         <motion.div
           className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-secondary/20 blur-3xl"
-          animate={{
-            x: [0, -30, 0],
-            y: [0, 20, 0],
-          }}
+          animate={{ x: [0, -30, 0], y: [0, 20, 0] }}
           transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
         />
       </div>
@@ -140,15 +159,17 @@ export default function Login() {
               />
               <button
                 onClick={() => setMode('login')}
-                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors relative z-10 ${mode === 'login' ? 'text-foreground' : 'text-muted-foreground'
-                  }`}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors relative z-10 ${
+                  mode === 'login' ? 'text-foreground' : 'text-muted-foreground'
+                }`}
               >
                 Log In
               </button>
               <button
                 onClick={() => setMode('register')}
-                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors relative z-10 ${mode === 'register' ? 'text-foreground' : 'text-muted-foreground'
-                  }`}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors relative z-10 ${
+                  mode === 'register' ? 'text-foreground' : 'text-muted-foreground'
+                }`}
               >
                 Sign Up
               </button>
@@ -178,6 +199,43 @@ export default function Login() {
                       />
                     </div>
 
+                    {/* ✅ Avatar picker */}
+                    <div className="space-y-2">
+                      
+                      <Label>Choose an avatar</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {AVATARS.map((src) => {
+                          const selected = avatarUrl === src;
+                          return (
+                            <button
+                              key={src}
+                              type="button"
+                              onClick={() => setAvatarUrl(src)}
+                              className={cn(
+                                "rounded-xl p-1 transition border",
+                                selected ? "border-primary" : "border-transparent hover:border-border"
+                              )}
+                              aria-label="Select avatar"
+                            >
+                              <img
+                                src={src}
+                                alt="Avatar"
+                                width={44}
+                                height={44}
+                                className={cn(
+                                  "rounded-lg block",
+                                  selected ? "ring-2 ring-primary" : ""
+                                )}
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        You can change this later in your profile.
+                      </p>
+                    </div>
+
                     {/* Date of Birth */}
                     <div className="space-y-2">
                       <Label>Date of Birth</Label>
@@ -199,9 +257,7 @@ export default function Login() {
                             mode="single"
                             selected={dateOfBirth}
                             onSelect={setDateOfBirth}
-                            disabled={(date) =>
-                              date > new Date() || date < new Date("1900-01-01")
-                            }
+                            disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
                             initialFocus
                             className="p-3 pointer-events-auto"
                             captionLayout="dropdown-buttons"
@@ -243,7 +299,7 @@ export default function Login() {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="bg-muted/50" 
+                  className="bg-muted/50"
                   required
                 />
               </motion.div>

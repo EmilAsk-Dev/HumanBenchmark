@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Features.Attempts.Controllers;
 
 [ApiController]
-[Route("attempts/typing")]
+[Route("api/attempts/typing")]
 [Authorize]
 [Tags("Attempts")]
 public class TypingAttemptsController : ControllerBase

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Features.Feed;
 
 [ApiController]
-[Route("feed")]
+[Route("api/feed")]
 [Authorize]
 [Tags("feed")]
 public class FeedController : ControllerBase

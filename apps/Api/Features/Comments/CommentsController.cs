@@ -17,7 +17,7 @@ public class CommentsController : ControllerBase
 
     private string Me => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-    [HttpGet("posts/{postId}/comments")]
+    [HttpGet("api/posts/{postId}/comments")]
     [Tags("Comments")]
     public Task<List<CommentDto>> Get(
         long postId,
@@ -25,7 +25,7 @@ public class CommentsController : ControllerBase
         [FromQuery] int take = 20)
         => _comments.GetForPostAsync(postId, Me, skip, take);
 
-    [HttpPost("posts/{postId}/comments")]
+    [HttpPost("api/posts/{postId}/comments")]
     [Tags("Comments")]
     public async Task<ActionResult<CommentDto>> Add(
         long postId,
@@ -36,7 +36,7 @@ public class CommentsController : ControllerBase
         return Ok(created);
     }
 
-    [HttpDelete("posts/{postId}/comments/{commentId}")]
+    [HttpDelete("api/posts/{postId}/comments/{commentId}")]
     [Tags("Comments")]
     public async Task<IActionResult> Delete(long postId, long commentId)
     {
@@ -44,7 +44,7 @@ public class CommentsController : ControllerBase
         return NoContent();
     }
 
-    [HttpPost("posts/{postId}/comments/{commentId}/like")]
+    [HttpPost("api/posts/{postId}/comments/{commentId}/like")]
     [Tags("Comments")]
     public async Task<IActionResult> ToggleLike(long postId, long commentId)
     {

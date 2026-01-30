@@ -8,12 +8,12 @@ using Microsoft.EntityFrameworkCore;
 namespace Api.Features.Friends;
 
 [ApiController]
-[Route("friends")]
+[Route("api/friends")]
 [Authorize]
 [Tags("Friends")]
 public class FriendsController : ControllerBase
 {
-    private readonly ApplicationDbContext _db;  
+    private readonly ApplicationDbContext _db;
 
     public FriendsController(ApplicationDbContext db)
     {

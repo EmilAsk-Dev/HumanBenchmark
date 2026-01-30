@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Features.Attempts.Controllers;
 
 [ApiController]
-[Route("attempts/reaction")]
+[Route("api/attempts/reaction")]
 [Authorize]
 [Tags("Attempts")]
 public class ReactionAttemptsController : ControllerBase

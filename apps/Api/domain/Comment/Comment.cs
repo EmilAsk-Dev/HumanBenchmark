@@ -12,6 +12,9 @@ public class Comment
 
     public string Content { get; set; } = default!;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public long? ParentCommentId { get; set; }
+    public Comment? ParentComment { get; set; }
+    public ICollection<Comment> Replies { get; set; } = new List<Comment>();
 
     public ICollection<Like> Likes { get; set; } = new List<Like>();
 }

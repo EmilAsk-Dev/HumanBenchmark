@@ -2,16 +2,15 @@ import { useState } from "react";
 import { Heart, MessageCircle, Play } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Post, TEST_CONFIGS, Comment, LikeTargetType } from "@/types";
+import { Post, TEST_CONFIGS, LikeTargetType, Comment } from "@/types";
 import { Button } from "@/components/ui/button";
 import { CommentSheet } from "./CommentSheet";
 import { cn } from "@/lib/utils";
-import { mockUsers } from "@/lib/mockData";
 
 interface FeedCardProps {
   post: Post;
   onLike: (targetId: string, targetType: LikeTargetType) => void;
-  onAddComment?: (postId: string, content: string) => void;
+  onAddComment?: (postId: string, content: string, parentCommentId?: string) => void;
   index?: number;
 }
 
@@ -33,25 +32,13 @@ function getPercentileColor(percentile: number): string {
   return "text-muted-foreground";
 }
 
+function countComments(comments: Comment[] = []): number {
+  return comments.reduce((acc, c) => acc + 1 + countComments(c.replies ?? []), 0);
+}
+
 export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProps) {
   const config = TEST_CONFIGS[post.testRun.testType] ?? TEST_CONFIGS.reaction;
   const [isCommentSheetOpen, setIsCommentSheetOpen] = useState(false);
-  const [localComments, setLocalComments] = useState<Comment[]>(post.comments ?? []);
-
-  const handleAddComment = (content: string) => {
-    const newComment: Comment = {
-      id: `comment-${Date.now()}`,
-      user: mockUsers[0],
-      content,
-      createdAt: new Date(),
-      likes: 0,
-      isLiked: false,
-    };
-    setLocalComments(prev => [newComment, ...prev]);
-    onAddComment?.(post.id, content);
-  };
-
-
 
   return (
     <>
@@ -138,7 +125,7 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
               whileTap={{ scale: 0.9 }}
             >
               <MessageCircle className="h-5 w-5" />
-              <span>{localComments.length}</span>
+              <span>{countComments(post.comments ?? [])}</span>
             </motion.button>
           </div>
 
@@ -156,10 +143,10 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
       <CommentSheet
         isOpen={isCommentSheetOpen}
         onClose={() => setIsCommentSheetOpen(false)}
-        comments={localComments}
-        onAddComment={handleAddComment}
+        comments={post.comments ?? []}
         postId={post.id}
         onLike={onLike}
+        onAddComment={(content, parentId) => onAddComment?.(post.id, content, parentId)}
       />
     </>
   );

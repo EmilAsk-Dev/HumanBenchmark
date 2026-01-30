@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Features.Users;
 
 [ApiController]
-[Route("profile")]
+[Route("api/profile")]
 [Authorize]
 [Tags("Profile")]
 public class ProfileController : ControllerBase

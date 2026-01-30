@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Features.Likes;
 
 [ApiController]
-[Route("likes")]
+[Route("api/likes")]
 [Authorize]
 [Tags("Likes")]
 public class LikesController : ControllerBase

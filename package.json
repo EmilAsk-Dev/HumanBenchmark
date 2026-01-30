@@ -7,6 +7,7 @@
     "dev": "dotenv -e .env -- concurrently --keepalive -n api,web,open -c auto \"dotnet run --project apps/Api\" \"npm --prefix apps/Web run dev\" \"node ./scripts/open-dev.mjs\"",
     "dev:api": "dotenv -e .env -- concurrently --keepalive -n api,open -c auto \"dotnet run --project apps/Api\" \"node ./scripts/open-api.mjs\"",
     "dev:web": "dotenv -e .env -- concurrently --keepalive -n web,open -c auto \"npm --prefix apps/Web run dev\" \"node ./scripts/open-web.mjs\"",
+    "dev:build": "dotnet build ./apps/Api/Api.csproj",
     "install:all": "npm install && npm --prefix apps/Web install && dotnet restore apps/Api",
     "db:add": "dotenv -e .env -- dotnet ef migrations add --project apps/Api --startup-project apps/Api",
     "db:update": "dotenv -e .env -- dotnet ef database update --project apps/Api --startup-project apps/Api",
