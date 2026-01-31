@@ -1,9 +1,12 @@
 namespace Api.Features.Comments;
 
+using Api.Features.Users.Dtos;
+
+
 public record CommentDto(
     long Id,
     long PostId,
-    string UserId,
+    UserDto User,
     string Content,
     DateTime CreatedAt,
     int LikeCount,

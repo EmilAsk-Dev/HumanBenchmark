@@ -50,7 +50,10 @@ public class PostsService
     public async Task<PostDto?> GetPostByIdAsync(long postId, string currentUserId)
     {
         var post = await _db.Posts
-            .Include(p => p.Attempt)
+            .Include(p => p.Attempt).ThenInclude(a => a.ReactionDetails)
+            .Include(p => p.Attempt).ThenInclude(a => a.TypingDetails)
+            .Include(p => p.Attempt).ThenInclude(a => a.ChimpDetails)
+            .Include(p => p.Attempt).ThenInclude(a => a.SequenceDetails)
             .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.Id == postId);
 
@@ -63,20 +66,23 @@ public class PostsService
         var displayScore = FormatDisplayScore(post.Attempt);
         var percentile = await CalculatePercentileAsync(post.Attempt);
 
+        var details = MapDetails(post.Attempt);
+
         return new PostDto(
-            post.Id,
-            post.CreatedAt,
-            post.UserId,
-            post.User.UserName ?? "Unknown",
-            null,
-            post.Attempt.Game,
-            post.Attempt.Value,
-            displayScore,
-            percentile,
-            post.Caption,
-            likeCount,
-            0,
-            isLikedByMe
+          post.Id,
+          post.CreatedAt,
+          post.UserId,
+          post.User.UserName ?? "Unknown",
+          null,
+          post.Attempt.Game,
+          post.Attempt.Value,
+          displayScore,
+          percentile,
+          post.Caption,
+          likeCount,
+          0,
+          isLikedByMe,
+          details
         );
     }
 
@@ -118,5 +124,55 @@ public class PostsService
 
         var percentile = ((double)(totalCount - betterCount) / totalCount) * 100;
         return Math.Round(percentile, 1);
+    }
+
+    private AttemptDetailsDto? MapDetails(Attempt attempt)
+    {
+        return attempt.Game switch
+        {
+            GameType.Reaction when attempt.ReactionDetails != null =>
+              new AttemptDetailsDto(
+                new ReactionDetailsDto(
+                  attempt.ReactionDetails.BestMs,
+                  attempt.ReactionDetails.AvgMs,
+                  attempt.ReactionDetails.Attempts
+                ),
+                null, null, null
+              ),
+
+            GameType.Typing when attempt.TypingDetails != null =>
+              new AttemptDetailsDto(
+                null,
+                new TypingDetailsDto(
+                  attempt.TypingDetails.Wpm,
+                  attempt.TypingDetails.Accuracy,
+                  attempt.TypingDetails.Characters
+                ),
+                null, null
+              ),
+
+            GameType.ChimpTest when attempt.ChimpDetails != null =>
+              new AttemptDetailsDto(
+                null, null,
+                new ChimpDetailsDto(
+                  attempt.ChimpDetails.Level,
+                  attempt.ChimpDetails.Mistakes,
+                  attempt.ChimpDetails.TimeMs
+                ),
+                null
+              ),
+
+            GameType.SequenceTest when attempt.SequenceDetails != null =>
+              new AttemptDetailsDto(
+                null, null, null,
+                new SequenceDetailsDto(
+                  attempt.SequenceDetails.Level,
+                  attempt.SequenceDetails.Mistakes,
+                  attempt.SequenceDetails.TimeMs
+                )
+              ),
+
+            _ => null
+        };
     }
 }

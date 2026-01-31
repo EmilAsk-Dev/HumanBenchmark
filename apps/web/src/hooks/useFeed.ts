@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from "react";
 import { Post, FeedFilter, LikeTargetType, Comment } from "@/types";
 import { api } from "@/lib/api";
 import { normalizePosts, normalizeComment } from "@/lib/normalize";
-
+import { useAuth } from "@/hooks/AuthProvider"; // adjust path
 function findCommentInTree(comments: Comment[], id: string): Comment | undefined {
   for (const c of comments) {
     if (c.id === id) return c;
@@ -41,6 +41,7 @@ function insertReply(comments: Comment[], parentId: string, reply: Comment): Com
 }
 
 export function useFeed() {
+  const { user: currentUser } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [filter, setFilter] = useState<FeedFilter>("global");
   const [isLoading, setIsLoading] = useState(false);
@@ -95,6 +96,8 @@ export function useFeed() {
       setPosts(prev =>
         prev.map(post => {
           if (targetType === LikeTargetType.Post) {
+            console.log("Updating post", post.id, targetId);
+
             if (post.id !== targetId) return post;
             return {
               ...post,
@@ -156,7 +159,7 @@ export function useFeed() {
           prev.map(post => {
             if (post.id !== postId) return post;
 
-            const normalized = normalizeComment(data, post.user);
+            const normalized = normalizeComment(data, currentUser);
 
             if (!parentCommentId) {
               return { ...post, comments: [normalized, ...(post.comments ?? [])] };
@@ -172,7 +175,7 @@ export function useFeed() {
 
       return { data, error: apiError };
     },
-    []
+    [currentUser]
   );
 
   return {

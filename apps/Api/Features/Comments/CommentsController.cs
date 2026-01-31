@@ -27,9 +27,7 @@ public class CommentsController : ControllerBase
 
     [HttpPost("api/posts/{postId}/comments")]
     [Tags("Comments")]
-    public async Task<ActionResult<CommentDto>> Add(
-        long postId,
-        [FromBody] CreateCommentRequest req)
+    public async Task<ActionResult<CommentDto>> Add(long postId, [FromBody] CreateCommentRequest req)
     {
         var created = await _comments.AddAsync(postId, Me, req);
         if (created is null) return NotFound();
@@ -44,11 +42,5 @@ public class CommentsController : ControllerBase
         return NoContent();
     }
 
-    [HttpPost("api/posts/{postId}/comments/{commentId}/like")]
-    [Tags("Comments")]
-    public async Task<IActionResult> ToggleLike(long postId, long commentId)
-    {
-        var (likeCount, isLiked) = await _comments.ToggleLikeAsync(commentId, Me);
-        return Ok(new { likeCount, isLiked });
-    }
+
 }

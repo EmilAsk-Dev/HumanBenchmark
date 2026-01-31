@@ -1,5 +1,6 @@
-import type { Post, TestType, Comment } from "@/types";
+import type { Post, TestType, Comment, User } from "@/types";
 import { apiTestTypeToTestType } from "@/types";
+
 
 export function normalizePost(apiPost: any): Post {
     const mapped: TestType | undefined = apiTestTypeToTestType[apiPost?.testRun?.testType];
@@ -26,12 +27,19 @@ export function normalizePost(apiPost: any): Post {
         comments: buildCommentTree(
             (apiPost.comments ?? []).map((c: any): Comment => ({
                 id: String(c.id),
-                user: c.user ?? apiPost.user,
-                content: c.text ?? c.content ?? "",
+
+                user: normalizeUser(c.user, apiPost.user),
+
+                content: c.content ?? c.text ?? "",
                 createdAt: new Date(c.createdAt),
-                likes: Number(c.likes ?? 0),
+
+                likes: Number(c.likeCount ?? 0),
+
                 isLiked: Boolean(c.isLiked ?? false),
-                parentCommentId: c.parentCommentId != null ? String(c.parentCommentId) : null,
+
+                parentCommentId:
+                    c.parentCommentId != null ? String(c.parentCommentId) : null,
+
                 replies: [],
             }))
         ),
@@ -87,23 +95,37 @@ export function buildCommentTree(comments: Comment[]): Comment[] {
     return roots;
 }
 
+function normalizeUser(apiUser: any, fallback?: any): User {
+    const u = apiUser ?? fallback;
+
+    const username =
+        u?.userName ??
+        u?.username ??
+        "unknown";
+
+    return {
+        id: String(u?.id ?? ""),
+        username,
+        displayName: u?.displayName ?? username,
+        avatar: u?.avatarUrl ?? u?.avatar ?? "/avatar-placeholder.png",
+        createdAt: null,
+        streak: null,
+        totalSessions: null,
+
+    };
+}
+
 export function normalizeComment(apiComment: any, fallbackUser?: any): Comment {
-    const user = apiComment?.user ?? fallbackUser;
+    const user = normalizeUser(apiComment?.user, fallbackUser);
 
     return {
         id: String(apiComment?.id),
-        user: {
-            ...user,
-            avatar: user?.avatar ?? "/avatar-placeholder.png",
-            username: user?.username ?? "unknown",
-            displayName: user?.displayName ?? "Unknown",
-        },
-        content: apiComment?.text ?? apiComment?.content ?? "",
+        user,
+        content: apiComment?.content ?? apiComment?.text ?? "",
         createdAt: new Date(apiComment?.createdAt ?? Date.now()),
-        likes: Number(apiComment?.likes ?? 0),
+        likes: Number(apiComment?.likeCount ?? apiComment?.likes ?? 0),
         isLiked: Boolean(apiComment?.isLiked ?? false),
-
         parentCommentId: apiComment?.parentCommentId ? String(apiComment.parentCommentId) : null,
-        replies: (apiComment?.replies ?? []) as Comment[], // (if API returns nested)
+        replies: (apiComment?.replies ?? []).map((r: any) => normalizeComment(r, fallbackUser)),
     };
 }
