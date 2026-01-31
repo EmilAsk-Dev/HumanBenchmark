@@ -1,6 +1,9 @@
+using System.Security.Claims;
 using Api.Data;
 using Api.Domain;
 using Api.Features.Users.Dtos;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Features.Users;
@@ -16,7 +19,7 @@ public class ProfileService
 
     public async Task<ProfileDto?> GetProfileAsync(string userId)
     {
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
             return null;
 
@@ -41,6 +44,7 @@ public class ProfileService
     private async Task<int> GetTotalSessionsAsync(string userId)
     {
         return await _db.Attempts
+            .AsNoTracking()
             .Where(a => a.UserId == userId)
             .CountAsync();
     }
@@ -48,6 +52,7 @@ public class ProfileService
     private async Task<int> GetStreakDaysAsync(string userId)
     {
         var dates = await _db.Attempts
+            .AsNoTracking()
             .Where(a => a.UserId == userId)
             .Select(a => a.CreatedAt.Date)
             .Distinct()
@@ -57,30 +62,19 @@ public class ProfileService
         if (dates.Count == 0)
             return 0;
 
-        var streak = 0;
         var today = DateTime.UtcNow.Date;
 
         if (dates[0] != today && dates[0] != today.AddDays(-1))
             return 0;
 
-        for (int i = 0; i < dates.Count; i++)
+        var streak = 1;
+
+        for (int i = 1; i < dates.Count; i++)
         {
-            var expectedDate = (i == 0 && dates[0] == today) ? today : today.AddDays(-i - (dates[0] == today ? 0 : 1));
-
-            if (i > 0)
-                expectedDate = dates[0].AddDays(-i);
-
-            if (dates[i] == expectedDate || (i == 0))
-            {
-                if (i == 0 || dates[i] == dates[i - 1].AddDays(-1))
-                    streak++;
-                else
-                    break;
-            }
+            if (dates[i] == dates[i - 1].AddDays(-1))
+                streak++;
             else
-            {
                 break;
-            }
         }
 
         return streak;
@@ -92,32 +86,30 @@ public class ProfileService
 
         foreach (GameType gameType in Enum.GetValues<GameType>())
         {
-            Attempt? best;
+            var q = _db.Attempts
+                .AsNoTracking()
+                .Where(a => a.UserId == userId && a.Game == gameType)
+                .Include(a => a.ReactionDetails)
+                .Include(a => a.TypingDetails)
+                .Include(a => a.ChimpDetails)
+                .Include(a => a.SequenceDetails);
 
-            if (gameType == GameType.Reaction)
-            {
-                best = await _db.Attempts
-                    .Where(a => a.UserId == userId && a.Game == gameType)
-                    .OrderBy(a => a.Value)
-                    .FirstOrDefaultAsync();
-            }
-            else
-            {
-                best = await _db.Attempts
-                    .Where(a => a.UserId == userId && a.Game == gameType)
-                    .OrderByDescending(a => a.Value)
-                    .FirstOrDefaultAsync();
-            }
+            Attempt? best =
+                gameType == GameType.Reaction
+                    ? await q.OrderBy(a => a.Value).FirstOrDefaultAsync()
+                    : await q.OrderByDescending(a => a.Value).FirstOrDefaultAsync();
 
-            if (best != null)
-            {
-                pbs[gameType.ToString()] = new PersonalBestDto(
-                    gameType,
-                    best.Value,
-                    FormatDisplayScore(gameType, best.Value),
-                    best.CreatedAt
-                );
-            }
+            if (best == null) continue;
+
+            var stats = MapStatistics(best);
+
+            pbs[gameType.ToString()] = new PersonalBestDto(
+                gameType,
+                best.Value,
+                FormatDisplayScore(gameType, best.Value),
+                best.CreatedAt,
+                stats
+            );
         }
 
         return pbs;
@@ -126,6 +118,7 @@ public class ProfileService
     private async Task<List<RecentRunDto>> GetRecentRunsAsync(string userId, int limit = 10)
     {
         var attempts = await _db.Attempts
+            .AsNoTracking()
             .Where(a => a.UserId == userId)
             .OrderByDescending(a => a.CreatedAt)
             .Take(limit)
@@ -147,6 +140,7 @@ public class ProfileService
         foreach (GameType gameType in Enum.GetValues<GameType>())
         {
             var dataPoints = await _db.Attempts
+                .AsNoTracking()
                 .Where(a => a.UserId == userId && a.Game == gameType)
                 .OrderByDescending(a => a.CreatedAt)
                 .Take(limit)
@@ -174,4 +168,44 @@ public class ProfileService
             _ => value.ToString()
         };
     }
+
+    private AttemptStatisticsDto MapStatistics(Attempt attempt)
+    {
+        return new AttemptStatisticsDto(
+            attempt.ReactionDetails == null
+                ? null
+                : new ReactionAttemptDetailsDto(
+                    attempt.ReactionDetails.AttemptId,
+                    attempt.ReactionDetails.BestMs,
+                    attempt.ReactionDetails.AvgMs,
+                    attempt.ReactionDetails.Attempts
+                ),
+            attempt.ChimpDetails == null
+                ? null
+                : new ChimpAttemptDetailsDto(
+                    attempt.ChimpDetails.AttemptId,
+                    attempt.ChimpDetails.Level,
+                    attempt.ChimpDetails.Mistakes,
+                    attempt.ChimpDetails.TimeMs
+                ),
+            attempt.TypingDetails == null
+                ? null
+                : new TypingAttemptDetailsDto(
+                    attempt.TypingDetails.AttemptId,
+                    attempt.TypingDetails.Wpm,
+                    attempt.TypingDetails.Accuracy,
+                    attempt.TypingDetails.Characters
+                ),
+            attempt.SequenceDetails == null
+                ? null
+                : new SequenceAttemptDetailsDto(
+                    attempt.SequenceDetails.AttemptId,
+                    attempt.SequenceDetails.Level,
+                    attempt.SequenceDetails.Mistakes,
+                    attempt.SequenceDetails.TimeMs
+                )   
+        );
+    }
 }
+
+
