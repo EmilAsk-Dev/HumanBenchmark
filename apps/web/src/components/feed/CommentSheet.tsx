@@ -52,8 +52,8 @@ function CommentRow({
   children?: React.ReactNode;
 }) {
   const avatar = comment.user?.avatar ?? "/avatar-placeholder.png";
-  const displayName = comment.user?.displayName ?? "Unknown";
-  const username = comment.user?.username ?? "unknown";
+  const displayName = comment.user?.userName ?? "Unknown";
+  const username = comment.user?.userName ?? "unknown";
 
   return (
     <div className={cn("flex gap-3 py-3", depth > 0 && "pl-4 border-l border-border/60")}>

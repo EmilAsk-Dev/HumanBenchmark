@@ -96,6 +96,8 @@ export function useFeed() {
       setPosts(prev =>
         prev.map(post => {
           if (targetType === LikeTargetType.Post) {
+            console.log("Updating post", post.id, targetId);
+
             if (post.id !== targetId) return post;
             return {
               ...post,

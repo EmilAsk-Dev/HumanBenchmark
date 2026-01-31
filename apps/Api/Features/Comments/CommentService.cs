@@ -109,11 +109,5 @@ public class CommentService
         return true;
     }
 
-    public async Task<(int likeCount, bool isLiked)> ToggleLikeAsync(long commentId, string me)
-    {
-        // ⚠️ FIX ME: This must use your Like table, not Comments.
-        // I can't write the correct version without seeing Api.Domain.Like.
-        // For now, throw so you don’t corrupt data:
-        throw new NotImplementedException("ToggleLikeAsync must be implemented using the Like entity/table.");
-    }
+
 }

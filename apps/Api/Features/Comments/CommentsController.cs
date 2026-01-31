@@ -42,11 +42,5 @@ public class CommentsController : ControllerBase
         return NoContent();
     }
 
-    [HttpPost("api/posts/{postId}/comments/{commentId}/like")]
-    [Tags("Comments")]
-    public async Task<IActionResult> ToggleLike(long postId, long commentId)
-    {
-        var (likeCount, isLiked) = await _comments.ToggleLikeAsync(commentId, Me);
-        return Ok(new { likeCount, isLiked });
-    }
+
 }
