@@ -493,5 +493,5 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
-# No Snitch
-./.claude
+# No Snitching
+*.claude
