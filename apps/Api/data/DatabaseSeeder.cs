@@ -646,3 +646,4 @@ public static class DbSeeder
         await db.SaveChangesAsync();
     }
 }
+
