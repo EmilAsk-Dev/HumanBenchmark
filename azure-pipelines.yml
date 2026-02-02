@@ -83,20 +83,12 @@ steps:
     arguments: "-r linux-x64"
 
 # ============================
-# Restore and Run API Tests
+# Run API Tests
 # ============================
-- task: DotNetCoreCLI@2
-  displayName: "Restore API Tests"
-  inputs:
-    command: "restore"
-    projects: "apps/Api.Tests/Api.Tests.csproj"
-
-- task: DotNetCoreCLI@2
+- script: |
+    dotnet restore apps/Api.Tests/Api.Tests.csproj
+    dotnet test apps/Api.Tests/Api.Tests.csproj --configuration $(buildConfiguration) --logger "trx;LogFileName=test-results.trx" --results-directory "$(Build.ArtifactStagingDirectory)/TestResults"
   displayName: "Run API Tests"
-  inputs:
-    command: "test"
-    projects: "apps/Api.Tests/Api.Tests.csproj"
-    arguments: "--configuration $(buildConfiguration) --no-restore --logger trx --results-directory $(Build.ArtifactStagingDirectory)/TestResults"
 
 - task: PublishTestResults@2
   displayName: "Publish Test Results"
