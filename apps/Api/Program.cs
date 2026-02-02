@@ -60,13 +60,19 @@ builder.Services
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
 
+builder.Services.AddHsts(options =>
+{
+    options.Preload = true;
+    options.IncludeSubDomains = true;
+    options.MaxAge = TimeSpan.FromDays(365);
+});
+
 // ======================================================
 // App
 // ======================================================
 var app = builder.Build();
 
-// If you're behind Azure's proxy, HTTPS redirection can warn.
-// It's okay to keep it, but if you see issues you can remove it.
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
@@ -89,6 +95,13 @@ if (app.Environment.IsDevelopment())
         options.WithOpenApiRoutePattern("/openapi/{documentName}.json");
     });
 }
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
 
 // ======================================================
 // Serve React from wwwroot (same origin)
