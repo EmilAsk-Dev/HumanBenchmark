@@ -6,7 +6,7 @@ namespace Api.Features.Messages;
 
 [ApiController]
 [Authorize]
-[Route("messages")]
+[Route("api/messages")]
 public class MessagesController : ControllerBase
 {
     private readonly MessageService _service;

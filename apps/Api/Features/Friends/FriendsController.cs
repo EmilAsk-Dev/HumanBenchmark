@@ -7,7 +7,7 @@ namespace Api.Features.Friends;
 
 [ApiController]
 [Authorize]
-[Route("friends")]
+[Route("api/friends")]
 public class FriendsController : ControllerBase
 {
     private readonly FriendsService _service;

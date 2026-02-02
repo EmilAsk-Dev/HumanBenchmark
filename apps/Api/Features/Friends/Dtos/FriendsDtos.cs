@@ -11,6 +11,17 @@ public record FriendRequestDto(
     DateTime? RespondedAt
 );
 
+public record FriendDto(
+    string Id,
+    string UserName,
+    string? AvatarUrl
+);
+
+public record FriendListItemDto(
+    FriendDto User,
+    DateTime CreatedAt
+);
+
 public record SendFriendRequestRequest(string ToUserId);
 
 public record RespondFriendRequestRequest(bool Accept);

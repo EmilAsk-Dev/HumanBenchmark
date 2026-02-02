@@ -17,16 +17,38 @@ public class FriendsService
     private static (string A, string B) OrderPair(string u1, string u2) =>
         string.CompareOrdinal(u1, u2) < 0 ? (u1, u2) : (u2, u1);
 
-    public async Task<List<FriendshipDto>> GetFriendsAsync(string me)
+    public async Task<List<FriendListItemDto>> GetFriendsAsync(string me)
     {
-        return await _db.Friendships
+        var friendUserIds = await _db.Friendships
             .Where(f => f.UserAId == me || f.UserBId == me)
             .OrderByDescending(f => f.CreatedAt)
-            .Select(f => new FriendshipDto(
-                f.UserAId == me ? f.UserBId : f.UserAId,
+            .Select(f => new
+            {
+                FriendId = f.UserAId == me ? f.UserBId : f.UserAId,
                 f.CreatedAt
+            })
+            .ToListAsync();
+
+        var ids = friendUserIds.Select(x => x.FriendId).Distinct().ToList();
+
+        var users = await _db.Users
+            .Where(u => ids.Contains(u.Id))
+            .Select(u => new FriendDto(
+                u.Id,
+                u.UserName!,
+                u.AvatarUrl
             ))
             .ToListAsync();
+
+        var userMap = users.ToDictionary(u => u.Id, u => u);
+
+        return friendUserIds
+            .Where(x => userMap.ContainsKey(x.FriendId))
+            .Select(x => new FriendListItemDto(
+                userMap[x.FriendId],
+                x.CreatedAt
+            ))
+            .ToList();
     }
 
     public async Task<List<FriendRequestDto>> GetRequestsAsync(string me)
