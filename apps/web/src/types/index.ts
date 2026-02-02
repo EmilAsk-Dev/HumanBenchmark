@@ -41,27 +41,11 @@ export interface Comment {
 }
 
 export interface LeaderboardEntry {
-  game: number;
-  scope: number;
-  timeframe: number;
-  totalUsers: number;
-  
-  entries:
-    {
-      rank: number;
-      userId: string;
-      userName: string;
-      bestScore: number;
-      achievedAtUtc: string;
-    }[];
-
-  me: { 
-    attempts: number;
-    bestScore: number;
-    bestAtUtc: string;
-    rank: number;
-    percentile: number;
- };
+  rank: number;
+  user: User;
+  score: number;
+  percentile: number;
+  testType: TestType;
 }
 
 export interface TestStats {
@@ -92,7 +76,7 @@ export interface DailyTest {
 
 
 
-export type TimeFilter = 'day' | 'week' | 'all';
+export type TimeFilter = 'daily' | 'weekly' | 'allTime';
 export type FeedFilter = 'friends' | 'global' | 'trending';
 
 export interface TestConfig {
@@ -107,9 +91,9 @@ export interface TestConfig {
 
 export enum ApiTestType {
   Reaction = 1,
-  ChimpTest = 2,
+  Chimp = 2,
   Typing = 3,
-  SequenceTest = 4,
+  Sequence = 4,
 }
 
 export enum LikeTargetType {
@@ -117,13 +101,13 @@ export enum LikeTargetType {
   Comment = 2,
 }
 
-export type TestType = 'reaction' | 'chimpTest' | 'typing' | 'sequenceTest';
+export type TestType = 'reaction' | 'chimp' | 'typing' | 'sequence';
 
 export const apiTestTypeToTestType: Record<number, TestType> = {
   [ApiTestType.Reaction]: 'reaction',
-  [ApiTestType.ChimpTest]: 'chimpTest',
+  [ApiTestType.Chimp]: 'chimp',
   [ApiTestType.Typing]: 'typing',
-  [ApiTestType.SequenceTest]: 'sequenceTest',
+  [ApiTestType.Sequence]: 'sequence',
 };
 
 export const TEST_CONFIGS: Record<TestType, TestConfig> = {
@@ -136,8 +120,8 @@ export const TEST_CONFIGS: Record<TestType, TestConfig> = {
     unit: 'ms',
     higherIsBetter: false,
   },
-  chimpTest: {
-    type: 'chimpTest',
+  chimp: {
+    type: 'chimp',
     name: 'Chimp Test',
     description: 'Are you smarter than a chimpanzee? Remember the positions of the numbers.',
     icon: 'Brain',
@@ -154,8 +138,8 @@ export const TEST_CONFIGS: Record<TestType, TestConfig> = {
     unit: 'WPM',
     higherIsBetter: true,
   },
-  sequenceTest: {
-    type: 'sequenceTest',
+  sequence: {
+    type: 'sequence',
     name: 'Sequence Memory',
     description: 'Remember an increasingly long pattern of button presses.',
     icon: 'Grid3x3',

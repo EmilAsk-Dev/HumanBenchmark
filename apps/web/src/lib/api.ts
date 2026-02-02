@@ -33,8 +33,8 @@ export const API_CONFIG = {
     SUBMIT_TEST: '/tests/submit',
     DAILY_TEST: '/tests/daily',
 
-    // Leaderboards
-    LEADERBOARDS: '/leaderboards',
+    // Leaderboards (backend kör plural)
+    LEADERBOARD: '/leaderboards',
 
     // Profile
     PROFILE: '/profile',
@@ -242,10 +242,28 @@ export const api = {
     return apiRequest<any>(API_CONFIG.ENDPOINTS.DAILY_TEST);
   },
 
-  // Leaderboard
-  async getLeaderboard(game: string, timeframe: string) {
-    return apiRequest<any>(
-      `${API_CONFIG.ENDPOINTS.LEADERBOARDS}?game=${game}&timeframe=${timeframe}`
+  // Leaderboard (matchar backend: game/scope/timeframe)
+  async getLeaderboard(testType: string, timeFilter: string) {
+    const gameMap: Record<string, string> = {
+      reaction: "Reaction",
+      chimp: "ChimpTest",
+      typing: "Typing",
+      sequence: "SequenceTest",
+    };
+
+    const timeframeMap: Record<string, string> = {
+      allTime: "All",
+      daily: "Day",
+      weekly: "Week",
+      monthly: "Month",
+    };
+
+    const game = gameMap[testType] ?? "Reaction";
+    const timeframe = timeframeMap[timeFilter] ?? "All";
+    const scope = "Global";
+
+    return apiRequest<any[]>(
+      `${API_CONFIG.ENDPOINTS.LEADERBOARD}?game=${encodeURIComponent(game)}&scope=${encodeURIComponent(scope)}&timeframe=${encodeURIComponent(timeframe)}`
     );
   },
 
