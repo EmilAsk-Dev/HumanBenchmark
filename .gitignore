@@ -12,8 +12,8 @@
 *.user
 *.userosscache
 *.sln.docstates
-# apps/Api/Migrations/
-# apps/Api/**/Migrations/
+apps/Api/Migrations/
+apps/Api/**/Migrations/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
