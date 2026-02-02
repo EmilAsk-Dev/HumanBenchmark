@@ -6,7 +6,7 @@ export function likeTargetTypeToRoute(type: LikeTargetType): "post" | "comment" 
 
 // API Configuration
 export const API_CONFIG = {
-  
+
   BASE_URL: '/api',
   ENDPOINTS: {
     // Auth
@@ -33,13 +33,8 @@ export const API_CONFIG = {
     SUBMIT_TEST: '/tests/submit',
     DAILY_TEST: '/tests/daily',
 
-<<<<<<< md/leaderbord
     // Leaderboards
     LEADERBOARDS: '/leaderboards',
-=======
-    // Leaderboards (backend kör plural)
-    LEADERBOARD: '/leaderboards',
->>>>>>> main
 
     // Profile
     PROFILE: '/profile',
