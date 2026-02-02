@@ -1,0 +1,132 @@
+using Api.Data;
+using Api.Domain.Friends;
+using Microsoft.EntityFrameworkCore;
+using Api.Features.Friends.Dtos;
+
+namespace Api.Features.Friends;
+
+public class FriendsService
+{
+    private readonly ApplicationDbContext _db;
+
+    public FriendsService(ApplicationDbContext db)
+    {
+        _db = db;
+    }
+
+    private static (string A, string B) OrderPair(string u1, string u2) =>
+        string.CompareOrdinal(u1, u2) < 0 ? (u1, u2) : (u2, u1);
+
+    public async Task<List<FriendshipDto>> GetFriendsAsync(string me)
+    {
+        return await _db.Friendships
+            .Where(f => f.UserAId == me || f.UserBId == me)
+            .OrderByDescending(f => f.CreatedAt)
+            .Select(f => new FriendshipDto(
+                f.UserAId == me ? f.UserBId : f.UserAId,
+                f.CreatedAt
+            ))
+            .ToListAsync();
+    }
+
+    public async Task<List<FriendRequestDto>> GetRequestsAsync(string me)
+    {
+        return await _db.FriendRequests
+            .Where(r =>
+                r.Status == FriendRequestStatus.Pending &&
+                (r.ToUserId == me || r.FromUserId == me))
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(r => new FriendRequestDto(
+                r.Id,
+                r.FromUserId,
+                r.ToUserId,
+                r.Status.ToString(),
+                r.CreatedAt,
+                r.RespondedAt
+            ))
+            .ToListAsync();
+    }
+
+    public async Task SendRequestAsync(string me, string toUserId)
+    {
+        if (toUserId == me)
+            throw new Exception("You cannot friend yourself.");
+
+        var (a, b) = OrderPair(me, toUserId);
+
+        var alreadyFriends = await _db.Friendships
+            .AnyAsync(f => f.UserAId == a && f.UserBId == b);
+
+        if (alreadyFriends)
+            throw new Exception("Already friends.");
+
+        var pending = await _db.FriendRequests
+            .AnyAsync(r =>
+                r.Status == FriendRequestStatus.Pending &&
+                ((r.FromUserId == me && r.ToUserId == toUserId) ||
+                 (r.FromUserId == toUserId && r.ToUserId == me)));
+
+        if (pending)
+            throw new Exception("Friend request already exists.");
+
+        _db.FriendRequests.Add(new FriendRequest
+        {
+            FromUserId = me,
+            ToUserId = toUserId,
+            Status = FriendRequestStatus.Pending,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task RespondToRequestAsync(string me, long requestId, bool accept)
+    {
+        var req = await _db.FriendRequests.FirstOrDefaultAsync(r => r.Id == requestId);
+
+        if (req == null)
+            throw new Exception("Request not found.");
+
+        if (req.ToUserId != me)
+            throw new Exception("Not allowed.");
+
+        if (req.Status != FriendRequestStatus.Pending)
+            throw new Exception("Request not pending.");
+
+        req.RespondedAt = DateTime.UtcNow;
+
+        if (accept)
+        {
+            req.Status = FriendRequestStatus.Accepted;
+
+            var (a, b) = OrderPair(req.FromUserId, req.ToUserId);
+
+            _db.Friendships.Add(new Friendship
+            {
+                UserAId = a,
+                UserBId = b,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            req.Status = FriendRequestStatus.Declined;
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task RemoveFriendAsync(string me, string friendId)
+    {
+        var (a, b) = OrderPair(me, friendId);
+
+        var friendship = await _db.Friendships
+            .FirstOrDefaultAsync(f => f.UserAId == a && f.UserBId == b);
+
+        if (friendship == null)
+            throw new Exception("Friendship not found.");
+
+        _db.Friendships.Remove(friendship);
+        await _db.SaveChangesAsync();
+    }
+}

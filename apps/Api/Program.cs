@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.RateLimiting;
 using Scalar.AspNetCore;
 using System.Threading.RateLimiting;
+using Api.Features.Messages;
+using Api.Features.Friends;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,6 +37,8 @@ builder.Services.AddScoped<Api.Features.Posts.PostsService>();
 builder.Services.AddScoped<Api.Features.Leaderboards.LeaderboardService>();
 builder.Services.AddScoped<Api.Features.Users.ProfileService>();
 builder.Services.AddScoped<Api.Features.Comments.CommentService>();
+builder.Services.AddScoped<MessageService>();
+builder.Services.AddScoped<FriendsService>();
 
 var connectionString =
     Environment.GetEnvironmentVariable("CONNECTION_STRING")

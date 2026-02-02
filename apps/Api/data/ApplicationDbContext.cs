@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Api.Domain;
 using Api.Domain.Friends;
+using Api.Domain.Message;
 
 namespace Api.Data;
 
@@ -24,6 +25,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<Comment> Comments => Set<Comment>();
 
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<Message> Messages => Set<Message>();
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
@@ -181,6 +184,22 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithOne(x => x.Comment)
                 .HasForeignKey(x => x.CommentId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<Conversation>(e =>
+        {
+            e.HasIndex(x => new { x.UserAId, x.UserBId }).IsUnique();
+
+            e.HasMany(x => x.Messages)
+                .WithOne(x => x.Conversation)
+                .HasForeignKey(x => x.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<Message>(e =>
+        {
+            e.HasIndex(x => new { x.ConversationId, x.SentAt });
+            e.Property(x => x.Content).HasMaxLength(2000);
         });
     }
 }
