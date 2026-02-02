@@ -1,12 +1,19 @@
 export interface Friend {
   id: string;
-  username: string;
-  displayName: string;
-  avatar: string;
+  userName: string;
+  avatar?: string;
   status: "online" | "offline" | "playing";
   lastSeen?: Date;
   currentGame?: string;
 }
+
+export interface FriendListItem {
+  user: Friend;
+  createdAt: string;
+}
+
+
+
 
 export interface FriendRequest {
   id: string;

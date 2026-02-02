@@ -79,7 +79,7 @@ export default function FriendProfile() {
             <div className="relative">
               <img
                 src={friend.avatar}
-                alt={friend.displayName}
+                alt={friend.userName}
                 className="w-20 h-20 rounded-full border-4 border-primary/30"
               />
               <div
@@ -88,9 +88,9 @@ export default function FriendProfile() {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-foreground">
-                {friend.displayName}
+                {friend.userName}
               </h2>
-              <p className="text-muted-foreground">@{friend.username}</p>
+              <p className="text-muted-foreground">@{friend.userName}</p>
               <p className="text-sm text-muted-foreground mt-1">
                 {getStatusText()}
               </p>
