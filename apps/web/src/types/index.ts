@@ -74,6 +74,11 @@ export interface DailyTest {
   isCompleted: boolean;
 }
 
+export type CreatePostRequest = {
+  attemptId: number;
+  caption?: string | null;
+};
+
 
 
 export type TimeFilter = 'daily' | 'weekly' | 'allTime';

@@ -18,6 +18,7 @@ import NotFound from "./pages/NotFound";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PublicOnlyRoute from "@/components/PublicOnlyRoute";
 import { AuthProvider } from "@/hooks/AuthProvider";
+import PostPage from "./pages/PostPage";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -36,6 +37,15 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/post/:postId"
+              element={
+                <ProtectedRoute>
+                  <PostPage />
+                </ProtectedRoute>
+              }
+            />
+
             <Route
               path="/login"
               element={
