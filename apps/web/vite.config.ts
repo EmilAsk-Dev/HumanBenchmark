@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         "/api": {
           target: env.VITE_API_TARGET ?? "http://localhost:5014",
-          changeOrigin: true,
+          changeOrigin: false,
           secure: false,
           rewrite: (p) => p.replace(/^\/api/, ""),
         },

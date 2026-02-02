@@ -3,9 +3,9 @@ import { LeaderboardEntry, TestType, TimeFilter } from '@/types';
 import { api } from '@/lib/api';
 
 export function useLeaderboard() {
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [entries, setEntries] = useState<LeaderboardEntry>();
   const [testType, setTestType] = useState<TestType>('reaction');
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('allTime');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -13,7 +13,7 @@ export function useLeaderboard() {
     setIsLoading(true);
     setError(null);
     
-    const { data, error: apiError } = await api.getLeaderboard(type, time);
+    const { data, error: apiError } = await api.getLeaderboard(testType, time);
     
     if (apiError) {
       setError(apiError);
@@ -23,7 +23,7 @@ export function useLeaderboard() {
     
     setTestType(type);
     setTimeFilter(time);
-    setEntries(data || []);
+    setEntries(data as LeaderboardEntry);
     setIsLoading(false);
   }, []);
 
@@ -33,7 +33,7 @@ export function useLeaderboard() {
   }, []);
 
   const getUserRank = useCallback((userId: string): number | undefined => {
-    const entry = entries.find(e => e.user.id === userId);
+    const entry = entries.entries.find(e => e.userId === userId);
     return entry?.rank;
   }, [entries]);
 

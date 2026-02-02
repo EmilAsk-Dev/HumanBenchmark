@@ -33,7 +33,7 @@ export const API_CONFIG = {
     DAILY_TEST: '/tests/daily',
 
     // Leaderboards
-    LEADERBOARD: '/leaderboard',
+    LEADERBOARDS: '/leaderboards',
 
     // Profile
     PROFILE: '/profile',
@@ -236,9 +236,9 @@ export const api = {
   },
 
   // Leaderboard
-  async getLeaderboard(testType: string, timeFilter: string) {
-    return apiRequest<any[]>(
-      `${API_CONFIG.ENDPOINTS.LEADERBOARD}?testType=${testType}&timeFilter=${timeFilter}`
+  async getLeaderboard(game: string, timeframe: string) {
+    return apiRequest<any>(
+      `${API_CONFIG.ENDPOINTS.LEADERBOARDS}?game=${game}&timeframe=${timeframe}`
     );
   },
 

@@ -3,16 +3,15 @@ import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { TEST_CONFIGS, TestType, TimeFilter } from '@/types';
 import { cn } from '@/lib/utils';
 
-const testTypes: TestType[] = ['reaction', 'chimp', 'typing', 'sequence'];
+const testTypes: TestType[] = ['reaction', 'chimpTest', 'typing', 'sequenceTest'];
 const timeFilters: { value: TimeFilter; label: string }[] = [
-  { value: 'daily', label: 'Today' },
-  { value: 'weekly', label: 'Week' },
-  { value: 'allTime', label: 'All Time' },
+  { value: 'day', label: 'Today' },
+  { value: 'week', label: 'Week' },
+  { value: 'all', label: 'All Time' },
 ];
 
 export default function Leaderboards() {
   const { entries, testType, timeFilter, setTestType, setTimeFilter, fetchLeaderboard } = useLeaderboard();
-
   return (
     <AppLayout>
       <div className="p-4">
@@ -57,10 +56,11 @@ export default function Leaderboards() {
         </div>
 
         {/* Leaderboard list */}
-        <div className="space-y-2">
-          {entries.map((entry, index) => (
+
+        {entries && <div className="space-y-2">
+          {entries.entries.map((entry, index) => (
             <div
-              key={entry.user.id}
+              key={entry.userId}
               className={cn(
                 'flex items-center gap-4 p-4 rounded-xl border border-border bg-card',
                 index < 3 && 'border-primary/30'
@@ -73,20 +73,15 @@ export default function Leaderboards() {
                 index === 2 && 'bg-orange-400 text-orange-950',
                 index > 2 && 'bg-muted text-muted-foreground'
               )}>
-                {index < 3 ? ['🥇', '🥈', '🥉'][index] : entry.rank}
-              </div>
-              <img src={entry.user.avatar} alt="" className="w-10 h-10 rounded-full" />
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-foreground truncate">{entry.user.displayName}</div>
-                <div className="text-xs text-muted-foreground">@{entry.user.username}</div>
+                {entry.rank}
               </div>
               <div className="text-right">
-                <div className="font-bold text-foreground">{entry.score} {TEST_CONFIGS[testType].unit}</div>
-                <div className="text-xs text-primary">Top {100 - entry.percentile}%</div>
+                <div className="font-bold text-foreground">{entry.userName}</div>
+                <div className="font-bold text-foreground">{entry.bestScore} {TEST_CONFIGS[testType].unit}</div>
               </div>
             </div>
           ))}
-        </div>
+        </div>}
       </div>
     </AppLayout>
   );
