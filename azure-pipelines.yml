@@ -65,6 +65,14 @@ steps:
   displayName: "Build Web"
 
 # ============================
+# Run Frontend Tests
+# ============================
+- script: |
+    cd "$(webRoot)"
+    npm run test -- --run
+  displayName: "Run Frontend Tests"
+
+# ============================
 # API Restore + Publish (self-contained linux-x64)
 # ============================
 - task: DotNetCoreCLI@2
@@ -74,6 +82,27 @@ steps:
     projects: "$(apiProject)"
     arguments: "-r linux-x64"
 
+# ============================
+# Run API Tests
+# ============================
+- task: DotNetCoreCLI@2
+  displayName: "Run API Tests"
+  inputs:
+    command: "test"
+    projects: "apps/Api.Tests/Api.Tests.csproj"
+    arguments: "--configuration $(buildConfiguration) --logger trx --results-directory $(Build.ArtifactStagingDirectory)/TestResults"
+
+- task: PublishTestResults@2
+  displayName: "Publish Test Results"
+  inputs:
+    testResultsFormat: "VSTest"
+    testResultsFiles: "$(Build.ArtifactStagingDirectory)/TestResults/*.trx"
+    failTaskOnFailedTests: true
+  condition: succeededOrFailed()
+
+# ============================
+# API Restore + Publish (self-contained linux-x64)
+# ============================
 - task: DotNetCoreCLI@2
   displayName: "Publish API (self-contained linux-x64)"
   inputs:
