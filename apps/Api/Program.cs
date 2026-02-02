@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using Api.Middleware;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -89,6 +90,8 @@ builder.Services.AddHsts(options =>
 // ======================================================
 var app = builder.Build();
 
+app.UseRequestLogging();
+builder.Services.AddApplicationInsightsTelemetry();
 
 if (!app.Environment.IsDevelopment())
 {
@@ -120,6 +123,8 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+
 
 // ======================================================
 // Serve React from wwwroot (same origin)
