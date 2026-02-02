@@ -1,15 +1,18 @@
 namespace Api.Features.Comments;
 
+using Api.Features.Users.Dtos;
+
+
 public record CommentDto(
     long Id,
     long PostId,
-    string UserId,
-    string Text,
+    UserDto User,
+    string Content,
     DateTime CreatedAt,
     int LikeCount,
-    bool IsLiked
+    bool IsLiked,
+    long? ParentCommentId
 );
 
-public record CreateCommentRequest(string Content, long? ReplyToCommentId = null);
-
+public record CreateCommentRequest(string Content, long? ParentCommentId);
 public record PagedRequest(int Skip = 0, int Take = 20);

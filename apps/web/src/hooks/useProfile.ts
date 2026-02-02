@@ -1,11 +1,31 @@
-import { useState, useCallback, useEffect } from 'react';
-import { User, TestStats, Badge } from '@/types';
-import { api } from '@/lib/api';
+import { useState, useCallback, useEffect } from "react";
+import { User, TestStats, Badge } from "@/types";
+import { api } from "@/lib/api";
+
+type PbByTest = Record<
+  string,
+  {
+    createdAt: string;
+    displayScore: string;
+    game: number;
+    value: number;
+    statistics: {
+      reaction: any | null;
+      chimp: any | null;
+      typing: any | null;
+      sequence: any | null;
+    } | null;
+  }
+>;
 
 export function useProfile() {
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<TestStats[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
+  const [pbByTest, setPbByTest] = useState<PbByTest>({});
+  const [recentRuns, setRecentRuns] = useState<any[]>([]);
+  const [seriesByTest, setSeriesByTest] = useState<Record<string, any>>({});
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,15 +43,22 @@ export function useProfile() {
 
     const p = profileResult.data as any;
 
-    setUser({
-      id: p.userId,
-      username: p.userName,
-      displayName: p.userName,
+    const u: User = {
+      id: p.userId ?? p.id,
+      userName: p.userName ?? p.username,
+      avatarUrl: p.avatarUrl ?? p.avatar ?? undefined,
+      avatar: p.avatar ?? p.avatarUrl ?? undefined,
+      createdAt: p.createdAt ?? new Date().toISOString(),
       totalSessions: p.totalSessions ?? 0,
-      streak: p.streakDays ?? 0,
-    } as User);
+      streak: p.streakDays ?? p.streak ?? 0,
+    };
 
-    // tills API har stöd för detta
+    setUser(u);
+
+    setPbByTest((p.pbByTest ?? {}) as PbByTest);
+    setRecentRuns(p.recentRuns ?? []);
+    setSeriesByTest(p.seriesByTest ?? {});
+
     setBadges([]);
     setStats([]);
 
@@ -54,13 +81,13 @@ export function useProfile() {
       return { error: apiError };
     }
 
-    setUser(prev => (prev ? { ...prev, ...data } : data));
+    setUser((prev) => (prev ? { ...prev, ...(data as any) } : (data as any)));
     setIsLoading(false);
     return { error: null };
   }, []);
 
-  const unlockedBadges = badges.filter(b => b.isUnlocked);
-  const lockedBadges = badges.filter(b => !b.isUnlocked);
+  const unlockedBadges = badges.filter((b) => b.isUnlocked);
+  const lockedBadges = badges.filter((b) => !b.isUnlocked);
 
   return {
     user,
@@ -68,6 +95,9 @@ export function useProfile() {
     badges,
     unlockedBadges,
     lockedBadges,
+    pbByTest,
+    recentRuns,
+    seriesByTest,
     isLoading,
     error,
     fetchProfile,

@@ -3,6 +3,7 @@ namespace Api.Features.Users.Dtos;
 public record ProfileDto(
     string UserId,
     string UserName,
+    string? AvatarUrl,
     int? TotalSessions,
     int? StreakDays,
     Dictionary<string, PersonalBestDto>? PbByTest,

@@ -1,7 +1,7 @@
 using Api.Data;
 using Api.Domain;
 using Microsoft.EntityFrameworkCore;
-
+using Api.Features.Users.Dtos;
 namespace Api.Features.Comments;
 
 public class CommentService
@@ -25,13 +25,18 @@ public class CommentService
             .Skip(skip)
             .Take(take)
             .Select(c => new CommentDto(
-                c.Id,
-                c.PostId,
-                c.UserId,
-                c.Content,
-                c.CreatedAt,
+                Id: c.Id,
+                PostId: c.PostId,
+                User: new UserDto(
+                    Id: c.User.Id,
+                    UserName: c.User.UserName!,
+                    AvatarUrl: c.User.AvatarUrl
+                ),
+                Content: c.Content,
+                CreatedAt: c.CreatedAt,
                 LikeCount: c.Likes.Count,
-                IsLiked: c.Likes.Any(l => l.UserId == me)
+                IsLiked: c.Likes.Any(l => l.UserId == me),
+                ParentCommentId: c.ParentCommentId
             ))
             .ToListAsync();
     }
@@ -42,16 +47,20 @@ public class CommentService
         if (content.Length == 0) throw new ArgumentException("Comment content is required.");
         if (content.Length > 2000) throw new ArgumentException("Comment is too long (max 2000 chars).");
 
-        if (req.ReplyToCommentId is not null)
+        long? parentId = null;
+
+        if (req.ParentCommentId is not null)
         {
             var parent = await _db.Comments
                 .AsNoTracking()
-                .Where(c => c.Id == req.ReplyToCommentId.Value)
+                .Where(c => c.Id == req.ParentCommentId.Value)
                 .Select(c => new { c.Id, c.PostId })
                 .FirstOrDefaultAsync();
 
             if (parent is null) throw new ArgumentException("Reply target not found.");
             if (parent.PostId != postId) throw new ArgumentException("Reply target must be in same post.");
+
+            parentId = parent.Id;
         }
 
         var comment = new Comment
@@ -59,21 +68,32 @@ public class CommentService
             PostId = postId,
             UserId = me,
             Content = content,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            ParentCommentId = parentId
         };
 
         _db.Comments.Add(comment);
         await _db.SaveChangesAsync();
 
-        return new CommentDto(
-            comment.Id,
-            comment.PostId,
-            comment.UserId,
-            comment.Content,
-            comment.CreatedAt,
-            LikeCount: 0,
-            IsLiked: false
-        );
+        // ✅ Re-query so User is populated and returned from DB
+        return await _db.Comments
+            .AsNoTracking()
+            .Where(c => c.Id == comment.Id)
+            .Select(c => new CommentDto(
+                Id: c.Id,
+                PostId: c.PostId,
+                User: new UserDto(
+                    Id: c.User.Id,
+                    UserName: c.User.UserName!,
+                    AvatarUrl: c.User.AvatarUrl
+                ),
+                Content: c.Content,
+                CreatedAt: c.CreatedAt,
+                LikeCount: 0,
+                IsLiked: false,
+                ParentCommentId: c.ParentCommentId
+            ))
+            .FirstAsync();
     }
 
     public async Task<bool> DeleteAsync(long commentId, string me, bool allowAdmins = false)
@@ -89,33 +109,5 @@ public class CommentService
         return true;
     }
 
-    public async Task<(int likeCount, bool isLiked)> ToggleLikeAsync(long commentId, string me)
-    {
-        var commentExists = await _db.Comments.AsNoTracking().AnyAsync(c => c.Id == commentId);
-        if (!commentExists) throw new ArgumentException("Comment not found.");
 
-        var existing = await _db.Comments
-            .FirstOrDefaultAsync(l => l.Id == commentId && l.UserId == me);
-
-        if (existing is null)
-        {
-            _db.Comments.Add(new Comment
-            {
-                Id = commentId,
-                UserId = me,
-                CreatedAt = DateTime.UtcNow
-            });
-        }
-        else
-        {
-            _db.Comments.Remove(existing);
-        }
-
-        await _db.SaveChangesAsync();
-
-        var likeCount = await _db.Comments.CountAsync(l => l.Id == commentId);
-        var isLiked = await _db.Comments.AnyAsync(l => l.Id == commentId && l.UserId == me);
-
-        return (likeCount, isLiked);
-    }
 }

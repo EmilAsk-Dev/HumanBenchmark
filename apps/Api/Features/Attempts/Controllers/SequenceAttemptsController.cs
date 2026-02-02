@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Features.Attempts.Controllers;
 
 [ApiController]
-[Route("attempts/sequence")]
+[Route("api/attempts/sequence")]
 [Authorize]
 [Tags("Attempts")]
 public class SequenceAttemptsController : ControllerBase

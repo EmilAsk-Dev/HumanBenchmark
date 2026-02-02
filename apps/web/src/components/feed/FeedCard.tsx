@@ -1,17 +1,16 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Heart, MessageCircle, Play } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Post, TEST_CONFIGS, Comment, LikeTargetType } from "@/types";
+import { Post, TEST_CONFIGS, LikeTargetType, Comment } from "@/types";
 import { Button } from "@/components/ui/button";
 import { CommentSheet } from "./CommentSheet";
 import { cn } from "@/lib/utils";
-import { mockUsers } from "@/lib/mockData";
 
 interface FeedCardProps {
   post: Post;
   onLike: (targetId: string, targetType: LikeTargetType) => void;
-  onAddComment?: (postId: string, content: string) => void;
+  onAddComment?: (postId: string, content: string, parentCommentId?: string) => void;
   index?: number;
 }
 
@@ -33,25 +32,129 @@ function getPercentileColor(percentile: number): string {
   return "text-muted-foreground";
 }
 
+function countComments(comments: Comment[] = []): number {
+  return comments.reduce((acc, c) => acc + 1 + countComments(c.replies ?? []), 0);
+}
+
+function formatMs(ms: number) {
+  if (!Number.isFinite(ms)) return "-";
+  return `${ms}ms`;
+}
+
+function formatAccuracy(acc: number) {
+  if (!Number.isFinite(acc)) return "-";
+  const pct = acc <= 1 ? acc * 100 : acc; // supports 0-1 or 0-100
+  return `${pct.toFixed(1)}%`;
+}
+
+function formatTimeMs(ms: number) {
+  if (!Number.isFinite(ms)) return "-";
+  if (ms < 1000) return `${ms}ms`;
+  const s = ms / 1000;
+  if (s < 60) return `${s.toFixed(1)}s`;
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return `${m}m ${rem.toFixed(0)}s`;
+}
+
+function StatPill({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/60 px-3 py-2">
+      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-sm font-semibold text-foreground tabular-nums">{value}</span>
+    </div>
+  );
+}
+
 export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProps) {
   const config = TEST_CONFIGS[post.testRun.testType] ?? TEST_CONFIGS.reaction;
   const [isCommentSheetOpen, setIsCommentSheetOpen] = useState(false);
-  const [localComments, setLocalComments] = useState<Comment[]>(post.comments ?? []);
 
-  const handleAddComment = (content: string) => {
-    const newComment: Comment = {
-      id: `comment-${Date.now()}`,
-      user: mockUsers[0],
-      content,
-      createdAt: new Date(),
-      likes: 0,
-      isLiked: false,
-    };
-    setLocalComments(prev => [newComment, ...prev]);
-    onAddComment?.(post.id, content);
-  };
+  const avatarSrc = post.user.avatarUrl ?? "/avatars/default.png";
+  const displayName = post.user.userName ?? "Unknown";
+  const username = post.user.userName ?? "unknown";
 
+  // ✅ Correct place (based on your debugger screenshot)
+  const statistics: any = (post as any).testRun?.statistics;
 
+  const statBlocks = useMemo(() => {
+    if (!statistics) return null;
+
+    // Reaction
+    if (statistics.reaction) {
+      const best = statistics.reaction.bestMs;
+      const avg = statistics.reaction.avgMs;
+      const attempts = statistics.reaction.attempts;
+
+      const consistency =
+        Number.isFinite(best) && Number.isFinite(avg) && avg > 0
+          ? `${Math.max(0, Math.min(100, Math.round((best / avg) * 100)))}%`
+          : "-";
+
+      return (
+        <div className="grid grid-cols-2 gap-2">
+          <StatPill label="Best" value={formatMs(best)} />
+          <StatPill label="Average" value={formatMs(avg)} />
+          <StatPill label="Attempts" value={Number.isFinite(attempts) ? attempts : "-"} />
+          <StatPill label="Consistency" value={consistency} />
+        </div>
+      );
+    }
+
+    // Typing
+    if (statistics.typing) {
+      const wpm = statistics.typing.wpm;
+      const accuracy = statistics.typing.accuracy;
+      const characters = statistics.typing.characters;
+
+      const acc01 = Number.isFinite(accuracy) ? (accuracy <= 1 ? accuracy : accuracy / 100) : NaN;
+      const errors =
+        Number.isFinite(characters) && Number.isFinite(acc01) ? Math.max(0, Math.round(characters * (1 - acc01))) : null;
+
+      return (
+        <div className="grid grid-cols-2 gap-2">
+          <StatPill label="WPM" value={Number.isFinite(wpm) ? wpm : "-"} />
+          <StatPill label="Accuracy" value={formatAccuracy(accuracy)} />
+          <StatPill label="Characters" value={Number.isFinite(characters) ? characters : "-"} />
+          <StatPill label="Errors" value={errors ?? "-"} />
+        </div>
+      );
+    }
+
+    // Chimp
+    if (statistics.chimp) {
+      const level = statistics.chimp.level;
+      const mistakes = statistics.chimp.mistakes;
+      const timeMs = statistics.chimp.timeMs;
+
+      return (
+        <div className="grid grid-cols-2 gap-2">
+          <StatPill label="Level" value={Number.isFinite(level) ? level : "-"} />
+          <StatPill label="Mistakes" value={Number.isFinite(mistakes) ? mistakes : "-"} />
+          <StatPill label="Time" value={formatTimeMs(timeMs)} />
+          <StatPill label="Perfect run" value={(mistakes ?? 0) === 0 ? "Yes" : "No"} />
+        </div>
+      );
+    }
+
+    // Sequence
+    if (statistics.sequence) {
+      const level = statistics.sequence.level;
+      const mistakes = statistics.sequence.mistakes;
+      const timeMs = statistics.sequence.timeMs;
+
+      return (
+        <div className="grid grid-cols-2 gap-2">
+          <StatPill label="Level" value={Number.isFinite(level) ? level : "-"} />
+          <StatPill label="Mistakes" value={Number.isFinite(mistakes) ? mistakes : "-"} />
+          <StatPill label="Time" value={formatTimeMs(timeMs)} />
+          <StatPill label="Perfect run" value={(mistakes ?? 0) === 0 ? "Yes" : "No"} />
+        </div>
+      );
+    }
+
+    return null;
+  }, [statistics]);
 
   return (
     <>
@@ -62,17 +165,21 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
         className="border-b border-border bg-card p-4 transition-colors hover:bg-accent/50"
       >
         {/* Header */}
-        <div className="flex items-center gap-3 mb-3">
+        <div className="mb-3 flex items-center gap-3">
           <motion.img
-            src={post.user.avatar}
-            alt={post.user.displayName}
-            className="h-10 w-10 rounded-full bg-muted"
+            src={avatarSrc}
+            alt={displayName}
+            className="h-10 w-10 rounded-full bg-muted object-cover"
             whileHover={{ scale: 1.1 }}
+            onError={(e) => {
+              const img = e.currentTarget as HTMLImageElement;
+              if (!img.src.endsWith("/avatars/default.png")) img.src = "/avatars/default.png";
+            }}
           />
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-foreground truncate">{post.user.displayName}</span>
-              <span className="text-xs text-muted-foreground">@{post.user.username}</span>
+              <span className="truncate font-semibold text-foreground">{displayName}</span>
+              <span className="text-xs text-muted-foreground">@{username}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>{config.name}</span>
@@ -84,7 +191,7 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
 
         {/* Score Display */}
         <motion.div
-          className="flex items-center justify-between mb-4 p-4 rounded-xl bg-muted/50"
+          className="mb-3 flex items-center justify-between rounded-xl bg-muted/50 p-4"
           whileHover={{ scale: 1.01 }}
           transition={{ type: "spring", stiffness: 400 }}
         >
@@ -102,18 +209,31 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
                 {config.icon === "Grid3x3" && "🔲"}
               </span>
             </motion.div>
+
             <div>
               <div className="text-3xl font-bold text-foreground">
                 {post.testRun.score}
-                <span className="text-lg font-normal text-muted-foreground ml-1">{config.unit}</span>
+                <span className="ml-1 text-lg font-normal text-muted-foreground">{config.unit}</span>
               </div>
             </div>
           </div>
+
           <div className={cn("text-right", getPercentileColor(post.testRun.percentile))}>
             <div className="text-2xl font-bold">Top {100 - post.testRun.percentile}%</div>
             <div className="text-xs text-muted-foreground">Percentile: {post.testRun.percentile}</div>
           </div>
         </motion.div>
+
+        {/* Stats */}
+        {statBlocks && (
+          <div className="mb-4">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">Stats</span>
+              <span className="text-xs text-muted-foreground">{config.name}</span>
+            </div>
+            {statBlocks}
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex items-center justify-between">
@@ -134,17 +254,17 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
 
             <motion.button
               onClick={() => setIsCommentSheetOpen(true)}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
               whileTap={{ scale: 0.9 }}
             >
               <MessageCircle className="h-5 w-5" />
-              <span>{localComments.length}</span>
+              <span>{countComments(post.comments ?? [])}</span>
             </motion.button>
           </div>
 
           <Link to={`/tests/${post.testRun.testType}`}>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button size="sm" className="gap-2 gradient-primary text-primary-foreground border-0">
+              <Button size="sm" className="gradient-primary gap-2 border-0 text-primary-foreground">
                 <Play className="h-4 w-4" />
                 Try This Test
               </Button>
@@ -156,10 +276,10 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
       <CommentSheet
         isOpen={isCommentSheetOpen}
         onClose={() => setIsCommentSheetOpen(false)}
-        comments={localComments}
-        onAddComment={handleAddComment}
+        comments={post.comments ?? []}
         postId={post.id}
         onLike={onLike}
+        onAddComment={(content, parentId) => onAddComment?.(post.id, content, parentId)}
       />
     </>
   );

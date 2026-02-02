@@ -1,9 +1,9 @@
 using Api.Domain;
-using Api.Features.Comments;
 
 namespace Api.Features.Feed.Dtos;
 
-
+using Api.Features.Comments;
+using Api.Features.Users.Dtos;
 public record FeedItemDto(
     long Id,
     UserDto User,
@@ -14,7 +14,8 @@ public record FeedItemDto(
     List<CommentDto> Comments
 );
 
-public record UserDto(string Id, string Username, string DisplayName);
+
+
 
 public record TestRunDto(GameType TestType, int Score, int Percentile, object? Statistics);
 

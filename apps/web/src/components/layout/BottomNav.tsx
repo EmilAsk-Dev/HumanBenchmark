@@ -1,23 +1,50 @@
-import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Gamepad2, Plus, Trophy, User, X, Zap, Brain, Keyboard, Grid3x3 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { TEST_CONFIGS, TestType } from '@/types';
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  Home,
+  Users,
+  Plus,
+  Trophy,
+  User,
+  X,
+  Zap,
+  Brain,
+  Keyboard,
+  Grid3x3,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { TEST_CONFIGS, TestType } from "@/types";
 
 const navItems = [
-  { path: '/', icon: Home, label: 'Feed' },
-  { path: '/tests', icon: Gamepad2, label: 'Tests' },
-  { path: '', icon: Plus, label: 'Quick', isAction: true },
-  { path: '/leaderboards', icon: Trophy, label: 'Ranks' },
-  { path: '/profile', icon: User, label: 'Profile' },
+  { path: "/", icon: Home, label: "Feed" },
+  { path: "/friends", icon: Users, label: "Friends" },
+  { path: "", icon: Plus, label: "Quick", isAction: true },
+  { path: "/leaderboards", icon: Trophy, label: "Ranks" },
+  { path: "/profile", icon: User, label: "Profile" },
 ];
 
 const quickTests: { type: TestType; icon: React.ReactNode; color: string }[] = [
-  { type: 'reaction', icon: <Zap className="h-5 w-5" />, color: 'bg-green-500' },
-  { type: 'chimp', icon: <Brain className="h-5 w-5" />, color: 'bg-orange-500' },
-  { type: 'typing', icon: <Keyboard className="h-5 w-5" />, color: 'bg-cyan-500' },
-  { type: 'sequence', icon: <Grid3x3 className="h-5 w-5" />, color: 'bg-purple-500' },
+  {
+    type: "reaction",
+    icon: <Zap className="h-5 w-5" />,
+    color: "bg-green-500",
+  },
+  {
+    type: "chimp",
+    icon: <Brain className="h-5 w-5" />,
+    color: "bg-orange-500",
+  },
+  {
+    type: "typing",
+    icon: <Keyboard className="h-5 w-5" />,
+    color: "bg-cyan-500",
+  },
+  {
+    type: "sequence",
+    icon: <Grid3x3 className="h-5 w-5" />,
+    color: "bg-purple-500",
+  },
 ];
 
 export function BottomNav() {
@@ -44,10 +71,10 @@ export function BottomNav() {
               className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm"
               onClick={() => setIsQuickMenuOpen(false)}
             />
-            
+
             {/* Quick Actions */}
             <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50">
-              <motion.div 
+              <motion.div
                 className="flex gap-4"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -57,29 +84,31 @@ export function BottomNav() {
                   <motion.button
                     key={test.type}
                     initial={{ opacity: 0, scale: 0.5, y: 20 }}
-                    animate={{ 
-                      opacity: 1, 
-                      scale: 1, 
+                    animate={{
+                      opacity: 1,
+                      scale: 1,
                       y: 0,
-                      transition: { delay: index * 0.05 }
+                      transition: { delay: index * 0.05 },
                     }}
-                    exit={{ 
-                      opacity: 0, 
-                      scale: 0.5, 
+                    exit={{
+                      opacity: 0,
+                      scale: 0.5,
                       y: 20,
-                      transition: { delay: (quickTests.length - index) * 0.03 }
+                      transition: { delay: (quickTests.length - index) * 0.03 },
                     }}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => handleQuickTest(test.type)}
                     className={cn(
-                      'flex flex-col items-center gap-2 p-4 rounded-2xl shadow-lg',
+                      "flex flex-col items-center gap-2 p-4 rounded-2xl shadow-lg",
                       test.color,
-                      'text-white'
+                      "text-white",
                     )}
                   >
                     {test.icon}
-                    <span className="text-xs font-medium">{TEST_CONFIGS[test.type].name.split(' ')[0]}</span>
+                    <span className="text-xs font-medium">
+                      {TEST_CONFIGS[test.type].name.split(" ")[0]}
+                    </span>
                   </motion.button>
                 ))}
               </motion.div>
@@ -94,7 +123,7 @@ export function BottomNav() {
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
-            
+
             if (item.isAction) {
               return (
                 <motion.button
@@ -104,7 +133,7 @@ export function BottomNav() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <motion.div 
+                  <motion.div
                     className="flex h-14 w-14 items-center justify-center rounded-full gradient-primary shadow-lg glow-primary"
                     animate={{ rotate: isQuickMenuOpen ? 45 : 0 }}
                     transition={{ duration: 0.2 }}
@@ -124,24 +153,29 @@ export function BottomNav() {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  'flex flex-col items-center gap-1 px-3 py-2 transition-colors',
-                  isActive 
-                    ? 'text-primary' 
-                    : 'text-muted-foreground hover:text-foreground'
+                  "flex flex-col items-center gap-1 px-3 py-2 transition-colors",
+                  isActive
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 <motion.div
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <Icon className={cn('h-5 w-5', isActive && 'drop-shadow-[0_0_8px_hsl(var(--primary))]')} />
+                  <Icon
+                    className={cn(
+                      "h-5 w-5",
+                      isActive && "drop-shadow-[0_0_8px_hsl(var(--primary))]",
+                    )}
+                  />
                 </motion.div>
                 <span className="text-xs font-medium">{item.label}</span>
                 {isActive && (
                   <motion.div
                     layoutId="activeTab"
                     className="absolute -bottom-1 h-1 w-1 rounded-full bg-primary"
-                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   />
                 )}
               </Link>

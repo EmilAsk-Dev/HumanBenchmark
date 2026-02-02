@@ -1,9 +1,47 @@
+// src/hooks/useFeed.ts
 import { useState, useCallback, useEffect } from "react";
-import { Post, FeedFilter, LikeTargetType } from "@/types";
+import { Post, FeedFilter, LikeTargetType, Comment } from "@/types";
 import { api } from "@/lib/api";
-import { normalizePosts } from "@/lib/normalize";
+import { normalizePosts, normalizeComment } from "@/lib/normalize";
+import { useAuth } from "@/hooks/AuthProvider"; // adjust path
+function findCommentInTree(comments: Comment[], id: string): Comment | undefined {
+  for (const c of comments) {
+    if (c.id === id) return c;
+    const found = c.replies?.length ? findCommentInTree(c.replies, id) : undefined;
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function updateCommentTree(
+  comments: Comment[],
+  targetId: string,
+  updater: (c: Comment) => Comment
+): Comment[] {
+  return comments.map(c => {
+    if (c.id === targetId) return updater(c);
+
+    const replies = c.replies?.length
+      ? updateCommentTree(c.replies, targetId, updater)
+      : c.replies;
+
+    if (replies !== c.replies) return { ...c, replies };
+    return c;
+  });
+}
+
+function insertReply(comments: Comment[], parentId: string, reply: Comment): Comment[] {
+  return comments.map(c => {
+    if (c.id === parentId) {
+      return { ...c, replies: [reply, ...(c.replies ?? [])] };
+    }
+    if (!c.replies?.length) return c;
+    return { ...c, replies: insertReply(c.replies, parentId, reply) };
+  });
+}
 
 export function useFeed() {
+  const { user: currentUser } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [filter, setFilter] = useState<FeedFilter>("global");
   const [isLoading, setIsLoading] = useState(false);
@@ -14,7 +52,6 @@ export function useFeed() {
     setIsLoading(true);
     setError(null);
 
-    // If your backend supports filter, pass it here: api.getFeed(feedFilter)
     const { data, error: apiError } = await api.getFeed();
 
     if (apiError) {
@@ -36,32 +73,32 @@ export function useFeed() {
     setIsRefreshing(true);
 
     const { data, error: apiError } = await api.getFeed();
-
     if (!apiError) setPosts(normalizePosts(data ?? []));
+
     setIsRefreshing(false);
   }, []);
 
-  /**
-   * Toggle like for either a post or a comment.
-   * - Like:   POST   /likes   { targetType, targetId }
-   * - Unlike: DELETE /likes/{post|comment}/{targetId}
-   */
   const likeTarget = useCallback(
     async (targetId: string, targetType: LikeTargetType) => {
-      // Determine current liked state from current posts snapshot
       const currentLiked =
         targetType === LikeTargetType.Post
           ? posts.find(p => p.id === targetId)?.isLiked ?? false
-          : posts.some(p => p.comments.some(c => c.id === targetId && c.isLiked));
+          : (() => {
+            for (const p of posts) {
+              const hit = findCommentInTree(p.comments ?? [], targetId);
+              if (hit) return hit.isLiked;
+            }
+            return false;
+          })();
 
       const shouldLike = !currentLiked;
 
-      // Optimistic update
       setPosts(prev =>
         prev.map(post => {
           if (targetType === LikeTargetType.Post) {
-            if (post.id !== targetId) return post;
+            console.log("Updating post", post.id, targetId);
 
+            if (post.id !== targetId) return post;
             return {
               ...post,
               isLiked: shouldLike,
@@ -69,23 +106,17 @@ export function useFeed() {
             };
           }
 
-          // Comment like
           return {
             ...post,
-            comments: post.comments.map(comment => {
-              if (comment.id !== targetId) return comment;
-
-              return {
-                ...comment,
-                isLiked: shouldLike,
-                likes: shouldLike ? comment.likes + 1 : comment.likes - 1,
-              };
-            }),
+            comments: updateCommentTree(post.comments ?? [], targetId, comment => ({
+              ...comment,
+              isLiked: shouldLike,
+              likes: shouldLike ? comment.likes + 1 : comment.likes - 1,
+            })),
           };
         })
       );
 
-      // Call backend
       const res = shouldLike
         ? await api.like(targetId, targetType)
         : await api.unlike(targetId, targetType);
@@ -97,7 +128,6 @@ export function useFeed() {
         prev.map(post => {
           if (targetType === LikeTargetType.Post) {
             if (post.id !== targetId) return post;
-
             return {
               ...post,
               isLiked: currentLiked,
@@ -107,15 +137,11 @@ export function useFeed() {
 
           return {
             ...post,
-            comments: post.comments.map(comment => {
-              if (comment.id !== targetId) return comment;
-
-              return {
-                ...comment,
-                isLiked: currentLiked,
-                likes: currentLiked ? comment.likes + 1 : comment.likes - 1,
-              };
-            }),
+            comments: updateCommentTree(post.comments ?? [], targetId, comment => ({
+              ...comment,
+              isLiked: currentLiked,
+              likes: currentLiked ? comment.likes + 1 : comment.likes - 1,
+            })),
           };
         })
       );
@@ -123,21 +149,34 @@ export function useFeed() {
     [posts]
   );
 
-  const addComment = useCallback(async (postId: string, content: string) => {
-    const { data, error: apiError } = await api.addComment(postId, content);
 
-    if (!apiError && data) {
-      // NOTE: If `data` is raw API comment (e.g. `text` not `content`),
-      // normalize it before inserting, or re-fetch the post/comments.
-      setPosts(prev =>
-        prev.map(post =>
-          post.id === postId ? { ...post, comments: [...post.comments, data] } : post
-        )
-      );
-    }
+  const addComment = useCallback(
+    async (postId: string, content: string, parentCommentId?: string) => {
+      const { data, error: apiError } = await api.addComment(postId, content, parentCommentId);
 
-    return { data, error: apiError };
-  }, []);
+      if (!apiError && data) {
+        setPosts(prev =>
+          prev.map(post => {
+            if (post.id !== postId) return post;
+
+            const normalized = normalizeComment(data, currentUser);
+
+            if (!parentCommentId) {
+              return { ...post, comments: [normalized, ...(post.comments ?? [])] };
+            }
+
+            return {
+              ...post,
+              comments: insertReply(post.comments ?? [], parentCommentId, normalized),
+            };
+          })
+        );
+      }
+
+      return { data, error: apiError };
+    },
+    [currentUser]
+  );
 
   return {
     posts,
