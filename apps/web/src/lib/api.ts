@@ -1,5 +1,6 @@
 import { LikeTargetType } from "../types/index.js";
-
+import { TestType } from "@/types";
+import type { CreateAttemptRequest, AttemptDto } from "@/types/test";
 export function likeTargetTypeToRoute(
   type: LikeTargetType,
 ): "post" | "comment" {
@@ -30,6 +31,7 @@ export const API_CONFIG = {
     COMMENTS: "/posts/:id/comments",
 
     // Tests (kan vara 404 om backend inte har dessa ännu)
+    ATTEMPTS: "/attempts",
     TEST_RESULTS: "/tests/results",
     TEST_STATS: "/tests/stats",
     SUBMIT_TEST: "/tests/submit",
@@ -215,6 +217,13 @@ export const api = {
     return apiRequest<any[]>(`${API_CONFIG.ENDPOINTS.POSTS}?filter=${filter}`);
   },
 
+  async createPost(attemptId: number, caption?: string) {
+    return apiRequest<any>(API_CONFIG.ENDPOINTS.POSTS, {
+      method: "POST",
+      body: JSON.stringify({ attemptId, caption: caption?.trim() || null }),
+    });
+  },
+
   async like(targetId: string | number, targetType: LikeTargetType) {
     return apiRequest(API_CONFIG.ENDPOINTS.LIKE, {
       method: "POST",
@@ -259,10 +268,19 @@ export const api = {
     return apiRequest<any[]>(API_CONFIG.ENDPOINTS.TEST_STATS);
   },
 
-  async submitTestResult(testType: string, score: number) {
-    return apiRequest<any>(API_CONFIG.ENDPOINTS.SUBMIT_TEST, {
+  async submitTestResult(testType: TestType, score: number, details: any) {
+    const payload: CreateAttemptRequest =
+      testType === "reaction"
+        ? { game: "reaction", value: score, reaction: details }
+        : testType === "chimp"
+          ? { game: "chimp", value: score, chimp: details }
+          : testType === "typing"
+            ? { game: "typing", value: score, typing: details }
+            : { game: "sequence", value: score, sequence: details };
+
+    return apiRequest<AttemptDto>(API_CONFIG.ENDPOINTS.ATTEMPTS, {
       method: "POST",
-      body: JSON.stringify({ testType, score }),
+      body: JSON.stringify(payload),
     });
   },
 

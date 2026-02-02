@@ -1,13 +1,18 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import { TestRun, TEST_CONFIGS } from "@/types";
+import { ArrowLeft, Share2 } from "lucide-react";
+import { TEST_CONFIGS } from "@/types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { sounds, initAudio } from "@/lib/sounds";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 interface ChimpTestProps {
-  onComplete: (score: number) => Promise<TestRun | null>;
+  submitAttempt: (
+    score: number,
+    details: { level: number; mistakes: number; timeMs: number },
+  ) => Promise<{ id: number } | null>;
 }
 
 type GameState =
@@ -17,17 +22,28 @@ type GameState =
   | "levelComplete"
   | "results";
 
-export function ChimpTest({ onComplete }: ChimpTestProps) {
+export function ChimpTest({ submitAttempt }: ChimpTestProps) {
   const navigate = useNavigate();
+
   const [gameState, setGameState] = useState<GameState>("instructions");
   const [level, setLevel] = useState(1);
   const [numbers, setNumbers] = useState<
     { value: number; x: number; y: number; clicked: boolean }[]
   >([]);
   const [nextExpected, setNextExpected] = useState(1);
-  const [result, setResult] = useState<TestRun | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const [finalScore, setFinalScore] = useState<number | null>(null);
+  const [mistakes, setMistakes] = useState(0);
+
+  // ✅ Share as post
+  const [attemptId, setAttemptId] = useState<number | null>(null);
+  const [caption, setCaption] = useState("");
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+
   const isMountedRef = useRef(true);
+  const testStartRef = useRef<number | null>(null);
 
   const config = TEST_CONFIGS.chimp;
   const gridSize = 5;
@@ -61,7 +77,6 @@ export function ChimpTest({ onComplete }: ChimpTestProps) {
 
   const startLevel = useCallback(
     (lvl: number) => {
-      // Keep the single source of truth for the current level here
       setLevel(lvl);
       const nums = generateNumbers(lvl);
       setNumbers(nums);
@@ -71,13 +86,58 @@ export function ChimpTest({ onComplete }: ChimpTestProps) {
     [generateNumbers],
   );
 
+  const endGame = useCallback(async () => {
+    if (isProcessing) return;
+
+    setIsProcessing(true);
+    try {
+      sounds.error();
+    } catch {
+      // ignore
+    }
+
+    const finalLevel = level;
+
+    // Show results immediately
+    setFinalScore(finalLevel);
+    setGameState("results");
+
+    const startedAt = testStartRef.current ?? Date.now();
+    const timeMs = Math.max(0, Date.now() - startedAt);
+
+    try {
+      const created = await submitAttempt(finalLevel, {
+        level: finalLevel,
+        mistakes,
+        timeMs,
+      });
+
+      if (isMountedRef.current) {
+        setAttemptId(created?.id ?? null);
+      }
+
+      try {
+        sounds.newRecord();
+      } catch {
+        // ignore
+      }
+    } catch (e) {
+      console.error("submitAttempt failed:", e);
+    } finally {
+      if (isMountedRef.current) setIsProcessing(false);
+    }
+  }, [isProcessing, level, mistakes, submitAttempt]);
+
   const handleCellClick = useCallback(
     async (clickedNum: { value: number; x: number; y: number }) => {
       if (isProcessing) return;
 
-      // Helper function to advance level
       const advanceLevel = () => {
-        sounds.levelUp();
+        try {
+          sounds.levelUp();
+        } catch {
+          // ignore
+        }
         setGameState("levelComplete");
         const nextLevel = level + 1;
 
@@ -88,46 +148,17 @@ export function ChimpTest({ onComplete }: ChimpTestProps) {
         }, 800);
       };
 
-      // Helper function to end game - show results immediately, API call in background
-      const endGame = () => {
-        setIsProcessing(true);
-        sounds.error();
-        const finalLevel = level;
-
-        // Show results immediately with placeholder percentile
-        const immediateResult: TestRun = {
-          id: "local",
-          testType: "chimp",
-          score: finalLevel,
-          percentile: 50,
-          createdAt: new Date(),
-          userId: "local",
-        };
-        setResult(immediateResult);
-        sounds.newRecord();
-        setGameState("results");
-        setIsProcessing(false);
-
-        // Update with real percentile from API in background (non-blocking)
-        onComplete(finalLevel)
-          .then((testResult) => {
-            if (isMountedRef.current && testResult) {
-              setResult(testResult);
-            }
-          })
-          .catch((e) => {
-            console.error("Error completing test:", e);
-          });
-      };
-
       if (gameState === "showing") {
         if (clickedNum.value === 1) {
-          sounds.click();
+          try {
+            sounds.click();
+          } catch {
+            // ignore
+          }
           setNumbers((prev) =>
             prev.map((n) => (n.value === 1 ? { ...n, clicked: true } : n)),
           );
 
-          // If level 1, clicking "1" completes the level immediately
           if (level === 1) {
             advanceLevel();
           } else {
@@ -140,7 +171,11 @@ export function ChimpTest({ onComplete }: ChimpTestProps) {
 
       if (gameState === "hidden") {
         if (clickedNum.value === nextExpected) {
-          sounds.click();
+          try {
+            sounds.click();
+          } catch {
+            // ignore
+          }
           setNumbers((prev) =>
             prev.map((n) =>
               n.value === clickedNum.value ? { ...n, clicked: true } : n,
@@ -148,18 +183,17 @@ export function ChimpTest({ onComplete }: ChimpTestProps) {
           );
 
           if (nextExpected === level) {
-            // Level complete
             advanceLevel();
           } else {
             setNextExpected((prev) => prev + 1);
           }
         } else {
-          // Wrong click - game over
-          endGame();
+          setMistakes((m) => m + 1);
+          await endGame();
         }
       }
     },
-    [gameState, nextExpected, level, onComplete, startLevel, isProcessing],
+    [endGame, gameState, isProcessing, level, nextExpected, startLevel],
   );
 
   const resetGame = useCallback(() => {
@@ -167,42 +201,117 @@ export function ChimpTest({ onComplete }: ChimpTestProps) {
     setLevel(startingLevel);
     setNumbers([]);
     setNextExpected(1);
-    setResult(null);
+
+    setFinalScore(null);
+    setMistakes(0);
     setIsProcessing(false);
+
+    // ✅ reset share state
+    setAttemptId(null);
+    setCaption("");
+    setIsSharing(false);
+    setShareError(null);
+
+    testStartRef.current = null;
   }, []);
 
   const handleStart = useCallback(() => {
     initAudio();
-    sounds.click();
+    try {
+      sounds.click();
+    } catch {
+      // ignore
+    }
+
+    setMistakes(0);
+
+    // reset share state for a new run
+    setAttemptId(null);
+    setCaption("");
+    setIsSharing(false);
+    setShareError(null);
+
+    testStartRef.current = Date.now();
     startLevel(startingLevel);
   }, [startLevel]);
 
-  if (gameState === "results" && result) {
+  const handleShare = useCallback(async () => {
+    if (!attemptId || isSharing) return;
+
+    setIsSharing(true);
+    setShareError(null);
+
+    const { data, error } = await api.createPost(attemptId, caption);
+
+    if (error) {
+      setShareError(error);
+      setIsSharing(false);
+      return;
+    }
+
+    const postId = (data as any)?.id ?? (data as any)?.post?.id;
+    if (postId) navigate(`/post/${postId}`);
+    else navigate("/feed");
+
+    setIsSharing(false);
+  }, [attemptId, caption, isSharing, navigate]);
+
+  if (gameState === "results" && finalScore !== null) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 animate-scale-in bg-background">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="text-6xl mb-4">🧠</div>
           <h2 className="text-2xl font-bold text-foreground mb-2">
             Chimp Test Complete
           </h2>
           <div className="text-6xl font-bold text-gradient-primary mb-2">
-            Level {result.score}
+            Level {finalScore}
           </div>
-          <div
-            className={cn(
-              "text-xl font-semibold",
-              result.percentile >= 90 ? "text-yellow-500" : "text-primary",
-            )}
-          >
-            Top {100 - result.percentile}%
-          </div>
+
           <p className="text-muted-foreground mt-2">
-            {result.score >= 9
+            {finalScore >= 9
               ? "Amazing! You beat the average chimp!"
-              : result.score >= 7
+              : finalScore >= 7
                 ? "Great memory!"
                 : "Keep practicing!"}
           </p>
+
+          <p className="text-sm text-muted-foreground mt-2">
+            Mistakes: {mistakes}
+          </p>
+
+          <p className="text-sm text-muted-foreground mt-2">
+            Saving attempt: {isProcessing ? "..." : attemptId ? "done" : "failed"}
+          </p>
+        </div>
+
+        {/* ✅ Share as post */}
+        <div className="w-full max-w-sm space-y-2 mb-6">
+          {shareError && (
+            <p className="text-sm text-destructive">Error: {shareError}</p>
+          )}
+
+          <Input
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            placeholder="Write a caption (optional)..."
+            maxLength={140}
+            disabled={!attemptId || isSharing}
+          />
+
+          <Button
+            onClick={handleShare}
+            disabled={!attemptId || isSharing}
+            className="w-full"
+            variant="secondary"
+          >
+            <Share2 className="h-4 w-4 mr-2" />
+            {isSharing
+              ? "Sharing..."
+              : attemptId
+                ? "Share as post"
+                : "Saving attempt..."}
+          </Button>
         </div>
 
         <div className="flex gap-3 w-full max-w-sm">

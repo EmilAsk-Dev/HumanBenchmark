@@ -14,13 +14,13 @@ public class AttemptWriter
         _db = db;
     }
 
-    public async Task<AttemptDto> CreateReactionAsync(string userId, CreateReactionAttemptRequest req)
+    public async Task<AttemptDto> CreateReactionAsync(string userId, int value, CreateReactionAttemptRequest req)
     {
         var attempt = new Attempt
         {
             UserId = userId,
             Game = GameType.Reaction,
-            Value = req.BestMs,
+            Value = value,
             CreatedAt = DateTime.UtcNow,
             ReactionDetails = new ReactionAttemptDetails
             {
@@ -36,13 +36,13 @@ public class AttemptWriter
         return ToDto(attempt);
     }
 
-    public async Task<AttemptDto> CreateTypingAsync(string userId, CreateTypingAttemptRequest req)
+    public async Task<AttemptDto> CreateTypingAsync(string userId, int value, CreateTypingAttemptRequest req)
     {
         var attempt = new Attempt
         {
             UserId = userId,
             Game = GameType.Typing,
-            Value = req.Wpm,
+            Value = value,
             CreatedAt = DateTime.UtcNow,
             TypingDetails = new TypingAttemptDetails
             {
@@ -58,13 +58,13 @@ public class AttemptWriter
         return ToDto(attempt);
     }
 
-    public async Task<AttemptDto> CreateChimpAsync(string userId, CreateChimpAttemptRequest req)
+    public async Task<AttemptDto> CreateChimpAsync(string userId, int value, CreateChimpAttemptRequest req)
     {
         var attempt = new Attempt
         {
             UserId = userId,
             Game = GameType.ChimpTest,
-            Value = req.Level,
+            Value = value,
             CreatedAt = DateTime.UtcNow,
             ChimpDetails = new ChimpAttemptDetails
             {
@@ -80,13 +80,13 @@ public class AttemptWriter
         return ToDto(attempt);
     }
 
-    public async Task<AttemptDto> CreateSequenceAsync(string userId, CreateSequenceAttemptRequest req)
+    public async Task<AttemptDto> CreateSequenceAsync(string userId, int value, CreateSequenceAttemptRequest req)
     {
         var attempt = new Attempt
         {
             UserId = userId,
             Game = GameType.SequenceTest,
-            Value = req.Level,
+            Value = value,
             CreatedAt = DateTime.UtcNow,
             SequenceDetails = new SequenceAttemptDetails
             {
