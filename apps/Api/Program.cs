@@ -1,10 +1,12 @@
-// Program.cs
 using Api.Data;
 using Api.Domain;
 using DotNetEnv;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,6 +62,21 @@ builder.Services
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
 
+builder.Services.AddRateLimiter(options =>
+{
+    // If you want requests above the limit to return 429 automatically
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Global policy name
+    options.AddFixedWindowLimiter("fixed", opt =>
+    {
+        opt.PermitLimit = 60;                 // 60 requests
+        opt.Window = TimeSpan.FromMinutes(1); // per 1 minute
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;                   // don't queue, just reject
+    });
+});
+
 builder.Services.AddHsts(options =>
 {
     options.Preload = true;
@@ -80,7 +97,8 @@ if (!app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
-
+app.UseRateLimiter();
+app.MapControllers().RequireRateLimiting("fixed");
 app.MapIdentityApi<ApplicationUser>();
 app.MapControllers();
 
@@ -110,6 +128,8 @@ app.UseHttpsRedirection();
 app.UseDefaultFiles();     // serves /index.html automatically
 app.UseStaticFiles();      // serves /assets/* etc
 app.MapFallbackToFile("index.html"); // React Router support
+
+
 
 // ======================================================
 // Seeder (dev only)
