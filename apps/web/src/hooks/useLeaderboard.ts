@@ -195,48 +195,39 @@ const mockLeaderboardData: Record<TestType, LeaderboardEntry[]> = {
 };
 
 export function useLeaderboard() {
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [testType, setTestType] = useState<TestType>("reaction");
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>("allTime");
+  const [entries, setEntries] = useState<LeaderboardEntry>();
+  const [testType, setTestType] = useState<TestType>('reaction');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchLeaderboard = useCallback(
-    async (type: TestType, time: TimeFilter) => {
-      setIsLoading(true);
-      setError(null);
-
-      const { data, error: apiError } = await api.getLeaderboard(type, time);
-
-      if (apiError || !data) {
-        // Use mock data as fallback
-        setTestType(type);
-        setTimeFilter(time);
-        setEntries(mockLeaderboardData[type] || []);
-        setIsLoading(false);
-        return;
-      }
-
-      setTestType(type);
-      setTimeFilter(time);
-      setEntries(data);
+  const fetchLeaderboard = useCallback(async (type: TestType, time: TimeFilter) => {
+    setIsLoading(true);
+    setError(null);
+    
+    const { data, error: apiError } = await api.getLeaderboard(testType, time);
+    
+    if (apiError) {
+      setError(apiError);
       setIsLoading(false);
-    },
-    [],
-  );
+      return;
+    }
+    
+    setTestType(type);
+    setTimeFilter(time);
+    setEntries(data as LeaderboardEntry);
+    setIsLoading(false);
+  }, []);
 
   // Initial fetch
   useEffect(() => {
     fetchLeaderboard(testType, timeFilter);
   }, []);
 
-  const getUserRank = useCallback(
-    (userId: string): number | undefined => {
-      const entry = entries.find((e) => e.user.id === userId);
-      return entry?.rank;
-    },
-    [entries],
-  );
+  const getUserRank = useCallback((userId: string): number | undefined => {
+    const entry = entries.entries.find(e => e.userId === userId);
+    return entry?.rank;
+  }, [entries]);
 
   return {
     entries,
