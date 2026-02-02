@@ -1,18 +1,15 @@
 using Api.Data;
 using Api.Domain;
+using Api.Middleware;
 using DotNetEnv;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.RateLimiting;
 using Scalar.AspNetCore;
 using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.RateLimiting;
-
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ======================================================
-// Hosting / Port (Azure App Service sets PORT)
-// ======================================================
 var port = Environment.GetEnvironmentVariable("PORT");
 
 if (!string.IsNullOrWhiteSpace(port))
@@ -24,17 +21,11 @@ else if (builder.Environment.IsDevelopment())
     builder.WebHost.UseUrls("http://0.0.0.0:5014");
 }
 
-// ======================================================
-// Env
-// ======================================================
 if (builder.Environment.IsDevelopment())
 {
     Env.Load();
 }
 
-// ======================================================
-// Services
-// ======================================================
 builder.Services.AddOpenApi();
 
 builder.Services.AddScoped<Api.Features.Attempts.Services.AttemptWriter>();
@@ -64,16 +55,14 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddRateLimiter(options =>
 {
-    // If you want requests above the limit to return 429 automatically
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    // Global policy name
     options.AddFixedWindowLimiter("fixed", opt =>
     {
-        opt.PermitLimit = 60;                 // 60 requests
-        opt.Window = TimeSpan.FromMinutes(1); // per 1 minute
+        opt.PermitLimit = 60;
+        opt.Window = TimeSpan.FromMinutes(1);
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = 0;                   // don't queue, just reject
+        opt.QueueLimit = 0;
     });
 });
 
@@ -84,27 +73,26 @@ builder.Services.AddHsts(options =>
     options.MaxAge = TimeSpan.FromDays(365);
 });
 
-// ======================================================
-// App
-// ======================================================
+builder.Services.AddApplicationInsightsTelemetry();
+
 var app = builder.Build();
 
+app.UseRequestLogging();
 
 if (!app.Environment.IsDevelopment())
 {
+    app.UseHsts();
     app.UseHttpsRedirection();
 }
 
+app.UseRateLimiter();
+
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseRateLimiter();
-app.MapControllers().RequireRateLimiting("fixed");
-app.MapIdentityApi<ApplicationUser>();
-app.MapControllers();
 
-// ======================================================
-// Swagger/Scalar (dev only)
-// ======================================================
+app.MapIdentityApi<ApplicationUser>().RequireRateLimiting("fixed");
+app.MapControllers().RequireRateLimiting("fixed");
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi("/openapi/{documentName}.json");
@@ -114,26 +102,10 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseHsts();
-}
+app.UseDefaultFiles();
+app.UseStaticFiles();
+app.MapFallbackToFile("index.html");
 
-app.UseHttpsRedirection();
-
-// ======================================================
-// Serve React from wwwroot (same origin)
-// IMPORTANT: This requires your pipeline to copy apps/web/dist -> API publish wwwroot
-// ======================================================
-app.UseDefaultFiles();     // serves /index.html automatically
-app.UseStaticFiles();      // serves /assets/* etc
-app.MapFallbackToFile("index.html"); // React Router support
-
-
-
-// ======================================================
-// Seeder (dev only)
-// ======================================================
 if (app.Environment.IsDevelopment())
 {
     await DbSeeder.SeedAsync(app.Services);
