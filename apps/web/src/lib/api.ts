@@ -1,56 +1,70 @@
-import { LikeTargetType } from '../types/index.js';
+import { LikeTargetType } from "../types/index.js";
 
-export function likeTargetTypeToRoute(type: LikeTargetType): "post" | "comment" {
+export function likeTargetTypeToRoute(
+  type: LikeTargetType,
+): "post" | "comment" {
   return type === LikeTargetType.Post ? "post" : "comment";
 }
 
 // API Configuration
 export const API_CONFIG = {
-
-  BASE_URL: '/api',
+  BASE_URL: "/api",
   ENDPOINTS: {
     // Auth
-    LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    LOGOUT: '/auth/logout',
-    ME: '/auth/me',
+    LOGIN: "/auth/login",
+    REGISTER: "/auth/register",
+    LOGOUT: "/auth/logout",
+    ME: "/auth/me",
 
     // Users
-    USERS: '/users',
-    USER_PROFILE: '/profile/:id',
+    USERS: "/users",
+    USER_PROFILE: "/profile/:id",
+    SEARCH_USERS: "/users/search",
 
     // Feed
-    FEED: '/feed',
-    POSTS: '/posts',
-    POST: '/posts/:id',
+    FEED: "/feed",
+    POSTS: "/posts",
+    POST: "/posts/:id",
     LIKE: "/likes",
     UNLIKE: "/likes/:targetType/:targetId",
-    COMMENTS: '/posts/:id/comments',
+    COMMENTS: "/posts/:id/comments",
 
     // Tests (kan vara 404 om backend inte har dessa ännu)
-    TEST_RESULTS: '/tests/results',
-    TEST_STATS: '/tests/stats',
-    SUBMIT_TEST: '/tests/submit',
-    DAILY_TEST: '/tests/daily',
+    TEST_RESULTS: "/tests/results",
+    TEST_STATS: "/tests/stats",
+    SUBMIT_TEST: "/tests/submit",
+    DAILY_TEST: "/tests/daily",
 
     // Leaderboards (backend kör plural)
-    LEADERBOARD: '/leaderboards',
+    LEADERBOARD: "/leaderboards",
 
     // Profile
-    PROFILE: '/profile',
-    BADGES: '/badges',
-  }
+    PROFILE: "/profile",
+    BADGES: "/badges",
+
+    // Friends
+    FRIENDS: "/friends",
+    FRIEND_REQUESTS: "/friends/requests",
+    FRIEND_REQUEST_ACTION: "/friends/requests/:id",
+    SEND_FRIEND_REQUEST: "/friends/requests",
+    REMOVE_FRIEND: "/friends/:id",
+
+    // Messages
+    CONVERSATIONS: "/messages/conversations",
+    MESSAGES: "/messages/:friendId",
+    SEND_MESSAGE: "/messages/:friendId",
+  },
 };
 
 // Token management
-let authToken: string | null = localStorage.getItem('auth_token');
+let authToken: string | null = localStorage.getItem("auth_token");
 
 export function setAuthToken(token: string | null) {
   authToken = token;
   if (token) {
-    localStorage.setItem('auth_token', token);
+    localStorage.setItem("auth_token", token);
   } else {
-    localStorage.removeItem('auth_token');
+    localStorage.removeItem("auth_token");
   }
 }
 
@@ -60,7 +74,7 @@ export function getAuthToken(): string | null {
 
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<{ data: T | null; error: string | null }> {
   const url = `${API_CONFIG.BASE_URL}${endpoint}`;
   console.log("[apiRequest]", options.method ?? "GET", url);
@@ -85,7 +99,9 @@ async function apiRequest<T>(
     const isJson = contentType.includes("application/json");
 
     if (!response.ok) {
-      const body = isJson ? JSON.stringify(await response.json()) : await response.text();
+      const body = isJson
+        ? JSON.stringify(await response.json())
+        : await response.text();
       return {
         data: null,
         error: body || `HTTP error ${response.status}`,
@@ -101,7 +117,12 @@ async function apiRequest<T>(
     }
 
     const data = (await response.json()) as T;
-    console.log("[apiRequest] response", response.status, response.statusText, data);
+    console.log(
+      "[apiRequest] response",
+      response.status,
+      response.statusText,
+      data,
+    );
     return { data, error: null };
   } catch (error) {
     console.error("API request failed:", error);
@@ -113,7 +134,10 @@ async function apiRequest<T>(
 }
 
 // Helper to replace path params
-function replaceParams(endpoint: string, params: Record<string, string>): string {
+function replaceParams(
+  endpoint: string,
+  params: Record<string, string>,
+): string {
   let result = endpoint;
   for (const [key, value] of Object.entries(params)) {
     result = result.replace(`:${key}`, value);
@@ -128,9 +152,9 @@ export const api = {
     const result = await apiRequest<{ user: any; token: string }>(
       API_CONFIG.ENDPOINTS.LOGIN,
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ email, password }),
-      }
+      },
     );
 
     if (result.data?.token) {
@@ -146,14 +170,21 @@ export const api = {
     username: string,
     dateOfBirth?: string,
     gender?: string,
-    avatarUrl?: string
+    avatarUrl?: string,
   ) {
     const result = await apiRequest<{ user: any; token: string }>(
       API_CONFIG.ENDPOINTS.REGISTER,
       {
-        method: 'POST',
-        body: JSON.stringify({ email, password, username, dateOfBirth, gender, avatarUrl }),
-      }
+        method: "POST",
+        body: JSON.stringify({
+          email,
+          password,
+          username,
+          dateOfBirth,
+          gender,
+          avatarUrl,
+        }),
+      },
     );
 
     if (result.data?.token) {
@@ -165,7 +196,7 @@ export const api = {
 
   async logout() {
     const result = await apiRequest(API_CONFIG.ENDPOINTS.LOGOUT, {
-      method: 'POST',
+      method: "POST",
     });
     setAuthToken(null);
     return result;
@@ -180,21 +211,18 @@ export const api = {
     return apiRequest<any[]>(API_CONFIG.ENDPOINTS.FEED);
   },
 
-  async getPosts(filter: string = 'global') {
+  async getPosts(filter: string = "global") {
     return apiRequest<any[]>(`${API_CONFIG.ENDPOINTS.POSTS}?filter=${filter}`);
   },
 
   async like(targetId: string | number, targetType: LikeTargetType) {
-    return apiRequest(
-      API_CONFIG.ENDPOINTS.LIKE,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          targetType,
-          targetId: Number(targetId),
-        }),
-      }
-    );
+    return apiRequest(API_CONFIG.ENDPOINTS.LIKE, {
+      method: "POST",
+      body: JSON.stringify({
+        targetType,
+        targetId: Number(targetId),
+      }),
+    });
   },
 
   async unlike(targetId: string | number, targetType: LikeTargetType) {
@@ -203,13 +231,13 @@ export const api = {
         targetType: likeTargetTypeToRoute(targetType),
         targetId: String(targetId),
       }),
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
   },
 
   async getComments(postId: string) {
     return apiRequest<any[]>(
-      replaceParams(API_CONFIG.ENDPOINTS.COMMENTS, { id: postId })
+      replaceParams(API_CONFIG.ENDPOINTS.COMMENTS, { id: postId }),
     );
   },
 
@@ -222,7 +250,7 @@ export const api = {
           content,
           parentCommentId: parentCommentId ? Number(parentCommentId) : null,
         }),
-      }
+      },
     );
   },
 
@@ -233,7 +261,7 @@ export const api = {
 
   async submitTestResult(testType: string, score: number) {
     return apiRequest<any>(API_CONFIG.ENDPOINTS.SUBMIT_TEST, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ testType, score }),
     });
   },
@@ -263,7 +291,7 @@ export const api = {
     const scope = "Global";
 
     return apiRequest<any[]>(
-      `${API_CONFIG.ENDPOINTS.LEADERBOARD}?game=${encodeURIComponent(game)}&scope=${encodeURIComponent(scope)}&timeframe=${encodeURIComponent(timeframe)}`
+      `${API_CONFIG.ENDPOINTS.LEADERBOARD}?game=${encodeURIComponent(game)}&scope=${encodeURIComponent(scope)}&timeframe=${encodeURIComponent(timeframe)}`,
     );
   },
 
@@ -277,12 +305,77 @@ export const api = {
 
   async updateProfile(updates: any) {
     return apiRequest<any>(API_CONFIG.ENDPOINTS.PROFILE, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify(updates),
     });
   },
 
   async getBadges() {
     return apiRequest<any[]>(API_CONFIG.ENDPOINTS.BADGES);
+  },
+
+  // Friends
+  async getFriends() {
+    return apiRequest<any[]>(API_CONFIG.ENDPOINTS.FRIENDS);
+  },
+
+  async getFriendRequests() {
+    return apiRequest<any[]>(API_CONFIG.ENDPOINTS.FRIEND_REQUESTS);
+  },
+
+  async sendFriendRequest(userId: string) {
+    return apiRequest<any>(API_CONFIG.ENDPOINTS.SEND_FRIEND_REQUEST, {
+      method: "POST",
+      body: JSON.stringify({ userId }),
+    });
+  },
+
+  async acceptFriendRequest(requestId: string) {
+    return apiRequest<any>(
+      replaceParams(API_CONFIG.ENDPOINTS.FRIEND_REQUEST_ACTION, {
+        id: requestId,
+      }),
+      { method: "POST", body: JSON.stringify({ action: "accept" }) },
+    );
+  },
+
+  async declineFriendRequest(requestId: string) {
+    return apiRequest<any>(
+      replaceParams(API_CONFIG.ENDPOINTS.FRIEND_REQUEST_ACTION, {
+        id: requestId,
+      }),
+      { method: "POST", body: JSON.stringify({ action: "decline" }) },
+    );
+  },
+
+  async removeFriend(friendId: string) {
+    return apiRequest<any>(
+      replaceParams(API_CONFIG.ENDPOINTS.REMOVE_FRIEND, { id: friendId }),
+      { method: "DELETE" },
+    );
+  },
+
+  async searchUsers(query: string) {
+    return apiRequest<any[]>(
+      `${API_CONFIG.ENDPOINTS.SEARCH_USERS}?q=${encodeURIComponent(query)}`,
+    );
+  },
+
+  // Messages
+  async getConversations() {
+    return apiRequest<any[]>(API_CONFIG.ENDPOINTS.CONVERSATIONS);
+  },
+
+  async getMessages(friendId: string) {
+    return apiRequest<any[]>(
+      replaceParams(API_CONFIG.ENDPOINTS.MESSAGES, { friendId }),
+    );
+  },
+
+  async sendMessage(friendId: string, content: string) {
+    return apiRequest<any>(
+      replaceParams(API_CONFIG.ENDPOINTS.SEND_MESSAGE, { friendId }),
+      { method: "POST", body: JSON.stringify({ content }) },
+    );
   },
 };
