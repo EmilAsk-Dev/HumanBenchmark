@@ -36,9 +36,16 @@ public class UsersController : ControllerBase
                 u.UserName != null &&
                 u.UserName.Contains(q) &&
                 u.Id != Me &&
+
                 !_db.Friendships.Any(f =>
                     (f.UserAId == Me && f.UserBId == u.Id) ||
                     (f.UserBId == Me && f.UserAId == u.Id)
+                ) &&
+
+                !_db.FriendRequests.Any(r =>
+                    r.Status == FriendRequestStatus.Pending &&
+                    ((r.FromUserId == Me && r.ToUserId == u.Id) ||
+                     (r.FromUserId == u.Id && r.ToUserId == Me))
                 )
             )
             .Select(u => new

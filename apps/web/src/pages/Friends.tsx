@@ -17,13 +17,15 @@ export default function Friends() {
 
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [isMessageOpen, setIsMessageOpen] = useState(false);
+  const { getMessages, sendMessage } = useFriends();
 
   const {
     friends,
     friendItems,
     onlineItems,
     offlineItems,
-    requests,
+    incomingRequests,
+    outgoingRequests,
     conversations,
     isLoading,
     error,
@@ -31,6 +33,7 @@ export default function Friends() {
     declineRequest,
     sendFriendRequest,
     searchUsers,
+
   } = useFriends();
 
   const handleMessageClick = (friend: Friend) => {
@@ -66,7 +69,10 @@ export default function Friends() {
           {friends.length} friends • {onlineItems.length} online
         </motion.p>
 
-        <FriendSearch searchUsers={searchUsers} onAddFriend={handleAddFriend} />
+        <FriendSearch
+          searchUsers={searchUsers}
+          onAddFriend={(userId) => sendFriendRequest(userId)}
+        />
 
         {isLoading && (
           <p className="text-sm text-muted-foreground mb-4">Loading...</p>
@@ -76,7 +82,8 @@ export default function Friends() {
         )}
 
         <FriendRequests
-          requests={requests}
+          incoming={incomingRequests}
+          outgoing={outgoingRequests}
           onAccept={(requestId) => acceptRequest(requestId)}
           onDecline={(requestId) => declineRequest(requestId)}
         />
@@ -136,9 +143,10 @@ export default function Friends() {
 
         <MessageSheet
           friend={selectedFriend}
-          conversation={selectedConversation}
           isOpen={isMessageOpen}
           onClose={() => setIsMessageOpen(false)}
+          getMessages={getMessages}
+          sendMessage={sendMessage}
         />
       </div>
     </AppLayout>

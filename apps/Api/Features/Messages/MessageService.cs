@@ -1,9 +1,7 @@
 using Api.Data;
 using Api.Domain.Message;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using Api.Features.Messages.Dtos;
-
+using Microsoft.EntityFrameworkCore;
 
 namespace Api.Features.Messages;
 
@@ -17,24 +15,30 @@ public class MessageService
     }
 
     private static (string A, string B) Normalize(string u1, string u2)
-    {
-        return string.Compare(u1, u2) < 0 ? (u1, u2) : (u2, u1);
-    }
+        => string.CompareOrdinal(u1, u2) < 0 ? (u1, u2) : (u2, u1);
 
     public async Task<List<ConversationDto>> GetConversationsAsync(string me)
     {
-        var conversations = await _db.Conversations
+        return await _db.Conversations
             .Where(c => c.UserAId == me || c.UserBId == me)
-            .OrderByDescending(c => c.Messages.Max(m => m.SentAt))
-            .Select(c => new ConversationDto
+            .Select(c => new
             {
-                ConversationId = c.Id,
+                c.Id,
                 FriendId = c.UserAId == me ? c.UserBId : c.UserAId,
-                LastMessageAt = c.Messages.Max(m => m.SentAt)
+                LastMessageAt = c.Messages
+                    .OrderByDescending(m => m.SentAt)
+                    .Select(m => (DateTime?)m.SentAt)
+                    .FirstOrDefault()
+            })
+            .Where(x => x.LastMessageAt != null)
+            .OrderByDescending(x => x.LastMessageAt)
+            .Select(x => new ConversationDto
+            {
+                ConversationId = x.Id,
+                FriendId = x.FriendId,
+                LastMessageAt = x.LastMessageAt!.Value
             })
             .ToListAsync();
-
-        return conversations;
     }
 
     public async Task<List<MessageDto>> GetMessagesAsync(string me, string friendId)
@@ -61,7 +65,7 @@ public class MessageService
     {
         var convo = await GetOrCreateConversationAsync(me, friendId, create: true);
 
-        var message = new Api.Domain.Message.Message
+        var message = new Message
         {
             ConversationId = convo.Id,
             SenderId = me,
@@ -81,10 +85,7 @@ public class MessageService
         };
     }
 
-    private async Task<Conversation?> GetOrCreateConversationAsync(
-        string me,
-        string friendId,
-        bool create)
+    private async Task<Conversation?> GetOrCreateConversationAsync(string me, string friendId, bool create)
     {
         var (a, b) = Normalize(me, friendId);
 

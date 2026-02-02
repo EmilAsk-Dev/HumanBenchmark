@@ -48,6 +48,7 @@ export const API_CONFIG = {
     FRIEND_REQUEST_ACTION: "/friends/requests/:id",
     SEND_FRIEND_REQUEST: "/friends/requests",
     REMOVE_FRIEND: "/friends/:id",
+    OUTGOING_FRIEND_REQUESTS: "/friends/requests/outgoing",
 
     // Messages
     CONVERSATIONS: "/messages/conversations",
@@ -77,7 +78,6 @@ async function apiRequest<T>(
   options: RequestInit = {},
 ): Promise<{ data: T | null; error: string | null }> {
   const url = `${API_CONFIG.BASE_URL}${endpoint}`;
-  console.log("[apiRequest]", options.method ?? "GET", url);
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -118,7 +118,7 @@ async function apiRequest<T>(
 
     const data = (await response.json()) as T;
     console.log(
-      "[apiRequest] response",
+      `[apiRequest] response ${url}`,
       response.status,
       response.statusText,
       data,
@@ -323,10 +323,16 @@ export const api = {
     return apiRequest<any[]>(API_CONFIG.ENDPOINTS.FRIEND_REQUESTS);
   },
 
-  async sendFriendRequest(userId: string) {
+  async getOutgoingFriendRequests() {
+    return apiRequest<any>(API_CONFIG.ENDPOINTS.OUTGOING_FRIEND_REQUESTS, {
+      method: "GET",
+    });
+  },
+
+  async sendFriendRequest(toUserId: string) {
     return apiRequest<any>(API_CONFIG.ENDPOINTS.SEND_FRIEND_REQUEST, {
       method: "POST",
-      body: JSON.stringify({ userId }),
+      body: JSON.stringify({ toUserId }),
     });
   },
 

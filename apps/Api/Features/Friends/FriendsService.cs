@@ -53,20 +53,78 @@ public class FriendsService
 
     public async Task<List<FriendRequestDto>> GetRequestsAsync(string me)
     {
-        return await _db.FriendRequests
-            .Where(r =>
-                r.Status == FriendRequestStatus.Pending &&
-                (r.ToUserId == me || r.FromUserId == me))
+        var reqs = await _db.FriendRequests
+            .Where(r => r.Status == FriendRequestStatus.Pending && r.ToUserId == me)
             .OrderByDescending(r => r.CreatedAt)
+            .Select(r => new
+            {
+                r.Id,
+                Status = r.Status.ToString(),
+                r.CreatedAt,
+                r.RespondedAt,
+                r.FromUserId,
+                r.ToUserId
+            })
+            .ToListAsync();
+
+        var userIds = reqs.SelectMany(r => new[] { r.FromUserId, r.ToUserId }).Distinct().ToList();
+
+        var users = await _db.Users
+            .Where(u => userIds.Contains(u.Id))
+            .Select(u => new FriendDto(u.Id, u.UserName!, u.AvatarUrl))
+            .ToListAsync();
+
+        var map = users.ToDictionary(u => u.Id, u => u);
+
+        return reqs
+            .Where(r => map.ContainsKey(r.FromUserId) && map.ContainsKey(r.ToUserId))
             .Select(r => new FriendRequestDto(
                 r.Id,
-                r.FromUserId,
-                r.ToUserId,
-                r.Status.ToString(),
+                r.Status,
                 r.CreatedAt,
-                r.RespondedAt
+                r.RespondedAt,
+                map[r.FromUserId],
+                map[r.ToUserId]
             ))
+            .ToList();
+    }
+
+    public async Task<List<FriendRequestDto>> GetOutgoingRequestsAsync(string me)
+    {
+        var reqs = await _db.FriendRequests
+            .Where(r => r.Status == FriendRequestStatus.Pending && r.FromUserId == me)
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(r => new
+            {
+                r.Id,
+                Status = r.Status.ToString(),
+                r.CreatedAt,
+                r.RespondedAt,
+                r.FromUserId,
+                r.ToUserId
+            })
             .ToListAsync();
+
+        var userIds = reqs.SelectMany(r => new[] { r.FromUserId, r.ToUserId }).Distinct().ToList();
+
+        var users = await _db.Users
+            .Where(u => userIds.Contains(u.Id))
+            .Select(u => new FriendDto(u.Id, u.UserName!, u.AvatarUrl))
+            .ToListAsync();
+
+        var map = users.ToDictionary(u => u.Id, u => u);
+
+        return reqs
+            .Where(r => map.ContainsKey(r.FromUserId) && map.ContainsKey(r.ToUserId))
+            .Select(r => new FriendRequestDto(
+                r.Id,
+                r.Status,
+                r.CreatedAt,
+                r.RespondedAt,
+                map[r.FromUserId],
+                map[r.ToUserId]
+            ))
+            .ToList();
     }
 
     public async Task SendRequestAsync(string me, string toUserId)

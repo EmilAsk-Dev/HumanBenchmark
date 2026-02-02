@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 interface FriendSearchProps {
   searchUsers: (query: string) => Promise<Friend[]>;
-  onAddFriend?: (friend: Friend) => Promise<{ success: boolean; error: any }>;
+  onAddFriend?: (userId: string) => Promise<{ success: boolean; error: any }>;
 }
 
 export function FriendSearch({ searchUsers, onAddFriend }: FriendSearchProps) {
@@ -46,10 +46,9 @@ export function FriendSearch({ searchUsers, onAddFriend }: FriendSearchProps) {
 
   const sendFriendRequest = async (friend: Friend) => {
     setSentRequests((prev) => new Set(prev).add(friend.id));
-
     if (!onAddFriend) return;
 
-    const res = await onAddFriend(friend);
+    const res = await onAddFriend(friend.id);
     if (!res?.success) {
       setSentRequests((prev) => {
         const next = new Set(prev);

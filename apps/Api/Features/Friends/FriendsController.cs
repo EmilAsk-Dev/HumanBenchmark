@@ -27,17 +27,25 @@ public class FriendsController : ControllerBase
         return Ok(await _service.GetFriendsAsync(Me));
     }
 
-    [HttpGet("requests")]
-    public async Task<IActionResult> GetRequests()
-    {
-        return Ok(await _service.GetRequestsAsync(Me));
-    }
+
 
     [HttpPost("requests")]
     public async Task<IActionResult> SendRequest([FromBody] SendFriendRequestRequest req)
     {
         await _service.SendRequestAsync(Me, req.ToUserId);
         return Ok();
+    }
+
+    [HttpGet("requests/outgoing")]
+    public async Task<IActionResult> GetOutgoingRequests()
+    {
+        return Ok(await _service.GetOutgoingRequestsAsync(Me));
+    }
+
+    [HttpGet("requests")]
+    public async Task<IActionResult> GetRequests()
+    {
+        return Ok(await _service.GetRequestsAsync(Me));
     }
 
     [HttpPost("requests/{id:long}")]

@@ -1,7 +1,7 @@
 export interface Friend {
   id: string;
   userName: string;
-  avatar: string;
+  avatar?: string;
   status: "online" | "offline" | "playing";
   lastSeen?: Date;
   currentGame?: string;
@@ -11,6 +11,7 @@ export interface FriendListItem {
   user: Friend;
   createdAt: string;
 }
+
 
 
 
