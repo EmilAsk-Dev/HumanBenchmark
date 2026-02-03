@@ -7,13 +7,22 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  buildConfiguration: "Release"
-  apiProject: "apps/Api/Api.csproj"
-  apiStartupProject: "apps/Api/Api.csproj"
-  testProject: "apps/Api.Tests/Api.Tests.csproj"
-  webRoot: "apps/web"
-  dotnetSdkVersion: "10.0.100"
-  apiOutDir: "$(Build.ArtifactStagingDirectory)/api_out"
+- group: Db
+
+- name: buildConfiguration
+  value: "Release"
+- name: apiProject
+  value: "apps/Api/Api.csproj"
+- name: apiStartupProject
+  value: "apps/Api/Api.csproj"
+- name: testProject
+  value: "apps/Api.Tests/Api.Tests.csproj"
+- name: webRoot
+  value: "apps/web"
+- name: dotnetSdkVersion
+  value: "10.0.100"
+- name: apiOutDir
+  value: "$(Build.ArtifactStagingDirectory)/api_out"
 
 steps:
 # ============================
