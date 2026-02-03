@@ -19,11 +19,13 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import PublicOnlyRoute from "@/components/PublicOnlyRoute";
 import { AuthProvider } from "@/hooks/AuthProvider";
 import PostPage from "./pages/PostPage";
+import NotificationsConnector from "./realtime/NotificationsConnector";
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <NotificationsConnector />
       <TooltipProvider>
         <Toaster />
         <Sonner />
