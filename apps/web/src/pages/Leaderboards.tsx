@@ -11,8 +11,7 @@ const timeFilters: { value: TimeFilter; label: string }[] = [
 ];
 
 export default function Leaderboards() {
-  const { entries, testType, timeFilter, setTestType, setTimeFilter, fetchLeaderboard } = useLeaderboard();
-
+  const { entries, testType, timeFilter, fetchLeaderboard, isLoading } = useLeaderboard();
   return (
     <AppLayout>
       <div className="p-4">
@@ -25,6 +24,7 @@ export default function Leaderboards() {
               key={type}
               type="button"
               onClick={() => fetchLeaderboard(type, timeFilter)}
+              disabled={isLoading}
               className={cn(
                 'px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all cursor-pointer select-none',
                 testType === type
@@ -44,6 +44,8 @@ export default function Leaderboards() {
               key={value}
               type="button"
               onClick={() => fetchLeaderboard(testType, value)}
+              disabled={isLoading}
+
               className={cn(
                 'px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer select-none',
                 timeFilter === value
@@ -56,11 +58,22 @@ export default function Leaderboards() {
           ))}
         </div>
 
+          {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+              <p className="text-sm text-muted-foreground">Loading leaderboard...</p>
+            </div>
+          </div>
+        )}
+
         {/* Leaderboard list */}
+        {!isLoading && (
+
         <div className="space-y-2">
-          {entries.map((entry, index) => (
+          {entries && entries.entries.length > 0 && entries.entries.map((entry, index) => (
             <div
-              key={entry.user.id}
+              key={entry.userId}
               className={cn(
                 'flex items-center gap-4 p-4 rounded-xl border border-border bg-card',
                 index < 3 && 'border-primary/30'
@@ -75,18 +88,18 @@ export default function Leaderboards() {
               )}>
                 {index < 3 ? ['🥇', '🥈', '🥉'][index] : entry.rank}
               </div>
-              <img src={entry.user.avatar} alt="" className="w-10 h-10 rounded-full" />
+              <img src={entry.userName} alt="" className="w-10 h-10 rounded-full" />
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-foreground truncate">{entry.user.displayName}</div>
-                <div className="text-xs text-muted-foreground">@{entry.user.username}</div>
+                <div className="font-semibold text-foreground truncate">{entry.userName}</div>
+                <div className="text-xs text-muted-foreground">@{entry.userName}</div>
               </div>
               <div className="text-right">
-                <div className="font-bold text-foreground">{entry.score} {TEST_CONFIGS[testType].unit}</div>
-                <div className="text-xs text-primary">Top {100 - entry.percentile}%</div>
+                <div className="font-bold text-foreground">{entry.bestScore} {TEST_CONFIGS[testType]?.unit}</div>
               </div>
             </div>
           ))}
         </div>
+        )}
       </div>
     </AppLayout>
   );

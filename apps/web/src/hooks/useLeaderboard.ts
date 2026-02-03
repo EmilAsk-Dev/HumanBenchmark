@@ -2,6 +2,26 @@ import { useState, useCallback, useEffect } from "react";
 import { LeaderboardEntry, TestType, TimeFilter } from "@/types";
 import { api } from "@/lib/api";
 
+type LeaderboardData = {
+  game: number;
+  scope: number;
+  timeframe: number;
+  totalUsers: number;
+  entries:{
+    rank: number;
+    userId: string;
+    userName: string;
+    bestScore: number;
+    achievedAtUtc: string;
+  }[];
+  me?: {
+    attempts: number;
+    bestScore: number;
+    bestAtUtc: string;
+    rank: number;
+    percentile: number;
+  };
+};
 // Mock leaderboard data for fallback
 const mockLeaderboardData: Record<TestType, LeaderboardEntry[]> = {
   reaction: [
@@ -9,7 +29,7 @@ const mockLeaderboardData: Record<TestType, LeaderboardEntry[]> = {
       rank: 1,
       user: {
         id: "1",
-        username: "reflexmaster",
+        userName: "reflexmaster",
         displayName: "Jake Wilson",
         avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=jake",
         createdAt: new Date(),
@@ -195,35 +215,32 @@ const mockLeaderboardData: Record<TestType, LeaderboardEntry[]> = {
 };
 
 export function useLeaderboard() {
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [testType, setTestType] = useState<TestType>("reaction");
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>("allTime");
+  const [entries, setEntries] = useState<LeaderboardData>();
+  const [testType, setTestType] = useState<TestType>();
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchLeaderboard = useCallback(
-    async (type: TestType, time: TimeFilter) => {
-      setIsLoading(true);
-      setError(null);
+  const fetchLeaderboard = useCallback(async (type: TestType, time: TimeFilter) => {
+    setIsLoading(true); 
+    setError(null);
 
-      const { data, error: apiError } = await api.getLeaderboard(type, time);
-
-      if (apiError || !data) {
-        // Use mock data as fallback
-        setTestType(type);
-        setTimeFilter(time);
-        setEntries(mockLeaderboardData[type] || []);
-        setIsLoading(false);
-        return;
-      }
-
+    const { data, error: apiError } = await api.getLeaderboard(type, time);
+    
+    if (apiError || !data) {
+      // Use mock data as fallback
       setTestType(type);
       setTimeFilter(time);
-      setEntries(data);
+      setEntries(data as unknown as LeaderboardData);
       setIsLoading(false);
-    },
-    [],
-  );
+      return;
+    }
+     
+    setTestType(type);
+    setTimeFilter(time);
+    setEntries(data as unknown as LeaderboardData );
+    setIsLoading(false);
+  }, []);
 
   // Initial fetch
   useEffect(() => {
