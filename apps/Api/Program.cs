@@ -9,6 +9,9 @@ using Scalar.AspNetCore;
 using System.Threading.RateLimiting;
 using Api.Features.Messages;
 using Api.Features.Friends;
+using Api.hubs;
+using Api.Features.WebSocket;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +42,10 @@ builder.Services.AddScoped<Api.Features.Users.ProfileService>();
 builder.Services.AddScoped<Api.Features.Comments.CommentService>();
 builder.Services.AddScoped<MessageService>();
 builder.Services.AddScoped<FriendsService>();
+builder.Services.AddScoped<RealtimeMessageBroadcaster>();
+builder.Services.AddSingleton<IPresenceTracker, PresenceTracker>();
+
+builder.Services.AddSignalR();
 
 var connectionString =
     Environment.GetEnvironmentVariable("CONNECTION_STRING")
@@ -77,11 +84,21 @@ builder.Services.AddHsts(options =>
     options.MaxAge = TimeSpan.FromDays(365);
 });
 
-builder.Services.AddApplicationInsightsTelemetry();
+if (!builder.Environment.IsDevelopment())
+{
+    builder.Services.AddApplicationInsightsTelemetry();
+}
 
 var app = builder.Build();
 
 app.UseRequestLogging();
+
+
+app.Use(async (ctx, next) =>
+{
+    Console.WriteLine($"REQ {ctx.Request.Method} {ctx.Request.Path}");
+    await next();
+});
 
 if (!app.Environment.IsDevelopment())
 {
@@ -94,8 +111,22 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
+
+app.MapGet("/debug", () => Results.Ok(new
+{
+    ok = true,
+    env = app.Environment.EnvironmentName,
+    urls = app.Urls.ToArray()
+}));
+
 app.MapIdentityApi<ApplicationUser>().RequireRateLimiting("fixed");
 app.MapControllers().RequireRateLimiting("fixed");
+
+app.MapHub<NotificationsHub>("/hubs/notifications");
+app.MapHub<ChatHub>("/hubs/chat");
+
+
+Console.WriteLine("SignalR Hub mapped at: /hubs/notifications");
 
 if (app.Environment.IsDevelopment())
 {
@@ -115,20 +146,25 @@ if (app.Environment.IsDevelopment())
     await DbSeeder.SeedAsync(app.Services);
 }
 
-// using (var scope = app.Services.CreateScope())
-// {
-//     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-//     db.Database.Migrate();
-// }
-
 app.Lifetime.ApplicationStarted.Register(() =>
 {
+    Console.WriteLine("==================================");
+    Console.WriteLine("API STARTED");
+    Console.WriteLine($"Environment: {app.Environment.EnvironmentName}");
+
     foreach (var url in app.Urls)
         Console.WriteLine($"Listening on: {url}");
 
     var first = app.Urls.FirstOrDefault();
-    if (first is not null && app.Environment.IsDevelopment())
-        Console.WriteLine($"Scalar: {first}/");
+    if (first is not null)
+    {
+        Console.WriteLine($"Debug: {first}/debug");
+        Console.WriteLine($"Hub:   {first}/hubs/notifications");
+        if (app.Environment.IsDevelopment())
+            Console.WriteLine($"Scalar: {first}/");
+    }
+
+    Console.WriteLine("==================================");
 });
 
 app.Run();

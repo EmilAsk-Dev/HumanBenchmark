@@ -45,7 +45,7 @@ export function useFriends() {
     const mapped: FriendListItem[] = (data || []).map((x: any) => ({
       createdAt: x.createdAt,
       user: {
-        id: x.user?.id,
+        id: String(x.user?.id),
         userName: x.user?.userName ?? x.user?.username ?? "",
         avatar: x.user?.avatarUrl ?? x.user?.avatar ?? "",
         status: x.user?.status ?? "offline",
@@ -77,7 +77,7 @@ export function useFriends() {
           id: String(r.id),
           createdAt: r.createdAt ? new Date(r.createdAt) : new Date(),
           from: {
-            id: fromObj.id,
+            id: String(fromObj.id),
             userName: fromObj.userName ?? fromObj.username ?? "",
             avatar: fromObj.avatarUrl ?? fromObj.avatar ?? "",
             status: fromObj.status ?? "offline",
@@ -91,7 +91,7 @@ export function useFriends() {
         id: String(r.id),
         createdAt: r.createdAt ? new Date(r.createdAt) : new Date(),
         from: {
-          id: r.fromUserId ?? r.fromId ?? "",
+          id: String(r.fromUserId ?? r.fromId ?? ""),
           userName: r.fromUserName ?? r.fromUsername ?? "Unknown",
           avatar: "",
           status: "offline",
@@ -118,7 +118,7 @@ export function useFriends() {
 
       const user: Friend = toObj
         ? {
-          id: toObj.id,
+          id: String(toObj.id),
           userName: toObj.userName ?? toObj.username ?? "",
           avatar: toObj.avatarUrl ?? toObj.avatar ?? "",
           status: toObj.status ?? "offline",
@@ -126,7 +126,7 @@ export function useFriends() {
           currentGame: toObj.currentGame ?? undefined,
         }
         : {
-          id: r.toUserId ?? r.toId ?? "",
+          id: String(r.toUserId ?? r.toId ?? ""),
           userName: r.toUserName ?? r.toUsername ?? "Unknown",
           avatar: "",
           status: "offline",
@@ -151,15 +151,16 @@ export function useFriends() {
     }
 
     const mapped: Conversation[] = (data || []).map((c: any) => ({
+      conversationId: Number(c.conversationId ?? c.id), // ✅ keep it
       friend: {
-        id: c.friendId,
-        userName: "",
-        avatar: "",
-        status: "offline",
+        id: String(c.friendId ?? c.friend?.id), // ✅ ensure string
+        userName: c.friend?.userName ?? c.friend?.username ?? "",
+        avatar: c.friend?.avatarUrl ?? c.friend?.avatar ?? "",
+        status: c.friend?.status ?? "offline",
       },
       messages: [],
       lastMessage: undefined,
-      unreadCount: 0,
+      unreadCount: c.unreadCount ?? 0,
     }));
 
     setState((prev) => ({
@@ -172,11 +173,10 @@ export function useFriends() {
     if (!query.trim()) return [];
 
     const { data, error } = await api.searchUsers(query);
-
     if (error) return [];
 
     return (data || []).map((u: any) => ({
-      id: u.id,
+      id: String(u.id),
       userName: u.userName ?? u.username ?? "",
       avatar: u.avatarUrl ?? u.avatar ?? "",
       status: u.status ?? "offline",
@@ -194,7 +194,6 @@ export function useFriends() {
     }
 
     await fetchOutgoingRequests();
-
     return { success: true, error: null };
   }, [fetchOutgoingRequests]);
 
@@ -209,10 +208,11 @@ export function useFriends() {
 
       await fetchFriends();
       await fetchRequests();
+      await fetchConversations();
 
       return { success: true, error: null };
     },
-    [fetchFriends, fetchRequests],
+    [fetchFriends, fetchRequests, fetchConversations],
   );
 
   const declineRequest = useCallback(
@@ -225,7 +225,6 @@ export function useFriends() {
       }
 
       await fetchRequests();
-
       return { success: true, error: null };
     },
     [fetchRequests],
@@ -241,44 +240,68 @@ export function useFriends() {
       }
 
       await fetchFriends();
+      await fetchConversations();
 
       return { success: true, error: null };
     },
-    [fetchFriends],
+    [fetchFriends, fetchConversations],
   );
 
-  const sendMessage = useCallback(async (friendId: string, content: string) => {
-    const { data, error } = await api.sendMessage(friendId, content);
+  const sendMessage = useCallback(
+    async (friendId: string, content: string) => {
+      const { data, error } = await api.sendMessage(friendId, content);
 
-    if (error) {
-      return { success: false, error };
-    }
+      if (error) {
+        return { success: false, error };
+      }
 
-    const mapped: Message = {
-      id: String(data.id),
-      senderId: data.senderId,
-      receiverId: friendId,
-      content: data.content,
-      createdAt: new Date(data.sentAt),
-      isRead: true,
-    };
-
-    setState((prev) => {
-      const idx = prev.conversations.findIndex((c) => c.friend.id === friendId);
-      if (idx < 0) return prev;
-
-      const updated = [...prev.conversations];
-      updated[idx] = {
-        ...updated[idx],
-        messages: [...updated[idx].messages, mapped],
-        lastMessage: mapped,
+      const mapped: Message = {
+        id: String(data.id),
+        senderId: data.senderId,
+        receiverId: String(friendId),
+        content: data.content,
+        createdAt: new Date(data.sentAt),
+        isRead: true,
       };
 
-      return { ...prev, conversations: updated };
-    });
+      setState((prev) => {
+        const idx = prev.conversations.findIndex((c) => c.friend.id === String(friendId));
 
-    return { success: true, error: null, message: data };
-  }, []);
+        if (idx < 0) {
+          const convId = Number(data.conversationId ?? data.conversationId ?? data.conversation?.id ?? 0);
+
+          return {
+            ...prev,
+            conversations: [
+              ...prev.conversations,
+              {
+                conversationId: convId,
+                friend: { id: String(friendId), userName: "", avatar: "", status: "offline" },
+                messages: [mapped],
+                lastMessage: mapped,
+                unreadCount: 0,
+              },
+            ],
+          };
+        }
+
+        const updated = [...prev.conversations];
+        updated[idx] = {
+          ...updated[idx],
+          messages: [...updated[idx].messages, mapped],
+          lastMessage: mapped,
+        };
+
+        return { ...prev, conversations: updated };
+      });
+
+
+      await fetchConversations();
+
+      return { success: true, error: null, message: data };
+    },
+    [fetchConversations],
+  );
 
   const getMessages = useCallback(async (friendId: string): Promise<Message[]> => {
     const { data, error } = await api.getMessages(friendId);
@@ -287,7 +310,7 @@ export function useFriends() {
     return (data || []).map((m: any) => ({
       id: String(m.id),
       senderId: m.senderId,
-      receiverId: friendId,
+      receiverId: String(friendId),
       content: m.content,
       createdAt: new Date(m.sentAt),
       isRead: true,
