@@ -48,4 +48,11 @@ public class MessagesController : ControllerBase
         var result = await _service.SendMessageAsync(Me, friendId, request.Content);
         return Ok(result);
     }
+
+    [HttpGet("conversation/{friendId}")]
+    public async Task<IActionResult> GetConversationId(string friendId)
+    {
+        var id = await _service.GetConversationIdAsync(Me, friendId);
+        return Ok(new { conversationId = id });
+    }
 }

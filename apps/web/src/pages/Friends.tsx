@@ -17,7 +17,7 @@ export default function Friends() {
 
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [isMessageOpen, setIsMessageOpen] = useState(false);
-  const { getMessages, sendMessage } = useFriends();
+
 
   const {
     friends,
@@ -33,7 +33,8 @@ export default function Friends() {
     declineRequest,
     sendFriendRequest,
     searchUsers,
-
+    getMessages,
+    sendMessage,
   } = useFriends();
 
   const handleMessageClick = (friend: Friend) => {
@@ -41,13 +42,11 @@ export default function Friends() {
     setIsMessageOpen(true);
   };
 
-  const handleAddFriend = async (friend: Friend) => {
-    return await sendFriendRequest(friend.id);
-  };
-
   const selectedConversation = selectedFriend
     ? conversations.find((c) => c.friend.id === selectedFriend.id)
     : undefined;
+
+  const conversationId = selectedConversation?.conversationId ?? null;
 
   return (
     <AppLayout>
@@ -69,17 +68,10 @@ export default function Friends() {
           {friends.length} friends • {onlineItems.length} online
         </motion.p>
 
-        <FriendSearch
-          searchUsers={searchUsers}
-          onAddFriend={(userId) => sendFriendRequest(userId)}
-        />
+        <FriendSearch searchUsers={searchUsers} onAddFriend={(userId) => sendFriendRequest(userId)} />
 
-        {isLoading && (
-          <p className="text-sm text-muted-foreground mb-4">Loading...</p>
-        )}
-        {error && (
-          <p className="text-sm text-destructive mb-4">Error: {error}</p>
-        )}
+        {isLoading && <p className="text-sm text-muted-foreground mb-4">Loading...</p>}
+        {error && <p className="text-sm text-destructive mb-4">Error: {error}</p>}
 
         <FriendRequests
           incoming={incomingRequests}
@@ -98,9 +90,7 @@ export default function Friends() {
             <div className="flex flex-col items-center justify-center py-10 text-center">
               <Users className="h-12 w-12 text-muted-foreground mb-3" />
               <p className="text-foreground font-medium">No friends yet</p>
-              <p className="text-muted-foreground text-sm">
-                Search for users to add friends
-              </p>
+              <p className="text-muted-foreground text-sm">Search for users to add friends</p>
             </div>
           ) : (
             <>
@@ -143,6 +133,7 @@ export default function Friends() {
 
         <MessageSheet
           friend={selectedFriend}
+          conversationId={conversationId}
           isOpen={isMessageOpen}
           onClose={() => setIsMessageOpen(false)}
           getMessages={getMessages}

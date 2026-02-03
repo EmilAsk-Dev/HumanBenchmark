@@ -1,5 +1,7 @@
 namespace Api.Domain.Message;
 
+
+
 public class Conversation
 {
     public long Id { get; set; }

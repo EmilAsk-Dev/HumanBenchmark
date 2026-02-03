@@ -1,6 +1,8 @@
+// Api/Features/Messages/MessageService.cs
 using Api.Data;
 using Api.Domain.Message;
 using Api.Features.Messages.Dtos;
+using Api.Features.WebSocket; // ✅ add
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Features.Messages;
@@ -8,10 +10,12 @@ namespace Api.Features.Messages;
 public class MessageService
 {
     private readonly ApplicationDbContext _db;
+    private readonly RealtimeMessageBroadcaster _realtime;
 
-    public MessageService(ApplicationDbContext db)
+    public MessageService(ApplicationDbContext db, RealtimeMessageBroadcaster realtime)
     {
         _db = db;
+        _realtime = realtime;
     }
 
     private static (string A, string B) Normalize(string u1, string u2)
@@ -65,24 +69,8 @@ public class MessageService
     {
         var convo = await GetOrCreateConversationAsync(me, friendId, create: true);
 
-        var message = new Message
-        {
-            ConversationId = convo.Id,
-            SenderId = me,
-            Content = content,
-            SentAt = DateTime.UtcNow
-        };
 
-        _db.Messages.Add(message);
-        await _db.SaveChangesAsync();
-
-        return new MessageDto
-        {
-            Id = message.Id,
-            SenderId = message.SenderId,
-            Content = message.Content,
-            SentAt = message.SentAt
-        };
+        return await _realtime.SendAsync(convo.Id, me, content);
     }
 
     private async Task<Conversation?> GetOrCreateConversationAsync(string me, string friendId, bool create)
@@ -109,5 +97,11 @@ public class MessageService
         await _db.SaveChangesAsync();
 
         return convo;
+    }
+
+    public async Task<long?> GetConversationIdAsync(string me, string friendId)
+    {
+        var convo = await GetOrCreateConversationAsync(me, friendId, create: false);
+        return convo?.Id;
     }
 }
