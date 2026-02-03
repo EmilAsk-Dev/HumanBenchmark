@@ -75,65 +75,98 @@ export function getAuthToken(): string | null {
   return authToken;
 }
 
+let inflight = new Map<string, Promise<{ data: any; error: string | null }>>();
+
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<{ data: T | null; error: string | null }> {
-  const url = `${API_CONFIG.BASE_URL}${endpoint}`;
+  const method = (options.method ?? "GET").toUpperCase();
 
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
+  // Only dedupe GET by default (safe). You can add HEAD too if you want.
+  const shouldDedupe = method === "GET";
 
-  try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-      credentials: "include",
-    });
+  // Include body in key only if it exists (usually none for GET)
+  const bodyKey =
+    typeof options.body === "string"
+      ? options.body
+      : options.body
+        ? JSON.stringify(options.body)
+        : "";
 
-    if (response.status === 204) {
-      return { data: null, error: null };
-    }
+  const key = `${method}:${endpoint}:${bodyKey}`;
 
-    const contentType = response.headers.get("content-type") || "";
-    const isJson = contentType.includes("application/json");
-
-    if (!response.ok) {
-      const body = isJson
-        ? JSON.stringify(await response.json())
-        : await response.text();
-      return {
-        data: null,
-        error: body || `HTTP error ${response.status}`,
-      };
-    }
-
-    if (!isJson) {
-      const text = await response.text();
-      return {
-        data: null,
-        error: `Expected JSON but got ${contentType || "unknown"}: ${text.slice(0, 200)}`,
-      };
-    }
-
-    const data = (await response.json()) as T;
-    console.log(
-      `[apiRequest] response ${url}`,
-      response.status,
-      response.statusText,
-      data,
-    );
-    return { data, error: null };
-  } catch (error) {
-    console.error("API request failed:", error);
-    return {
-      data: null,
-      error: error instanceof Error ? error.message : "Network error",
-    };
+  if (shouldDedupe) {
+    const existing = inflight.get(key);
+    if (existing) return existing as Promise<{ data: T | null; error: string | null }>;
   }
+
+  const p = (async () => {
+    const url = `${API_CONFIG.BASE_URL}${endpoint}`;
+
+    const headers: HeadersInit = {
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...options.headers,
+    };
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: "include",
+      });
+
+      if (response.status === 204 || response.status === 205) {
+        return { data: null, error: null };
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      const isJson = contentType.includes("application/json");
+
+      // Special-case 429 so you can see it clearly
+      if (response.status === 429) {
+        const retryAfter = response.headers.get("Retry-After");
+        const text = await response.text().catch(() => "");
+        return {
+          data: null,
+          error:
+            `Rate limited (429). Retry-After: ${retryAfter ?? "unknown"}. ` +
+            (text ? text.slice(0, 200) : ""),
+        };
+      }
+
+      if (!response.ok) {
+        const body = isJson
+          ? JSON.stringify(await response.json())
+          : await response.text();
+        return { data: null, error: body || `HTTP error ${response.status}` };
+      }
+
+      if (!isJson) {
+        const text = await response.text();
+        if (!text) return { data: null, error: null };
+        return {
+          data: null,
+          error: `Expected JSON but got ${contentType || "unknown"}: ${text.slice(0, 200)}`,
+        };
+      }
+
+      const data = (await response.json()) as T;
+      return { data, error: null };
+    } catch (error) {
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : "Network error",
+      };
+    } finally {
+      if (shouldDedupe) inflight.delete(key);
+    }
+  })();
+
+  if (shouldDedupe) inflight.set(key, p);
+  return p;
 }
+
 
 // Helper to replace path params
 function replaceParams(
@@ -356,19 +389,15 @@ export const api = {
 
   async acceptFriendRequest(requestId: string) {
     return apiRequest<any>(
-      replaceParams(API_CONFIG.ENDPOINTS.FRIEND_REQUEST_ACTION, {
-        id: requestId,
-      }),
-      { method: "POST", body: JSON.stringify({ action: "accept" }) },
+      replaceParams(API_CONFIG.ENDPOINTS.FRIEND_REQUEST_ACTION, { id: requestId }),
+      { method: "POST", body: JSON.stringify({ accept: true }) },
     );
   },
 
   async declineFriendRequest(requestId: string) {
     return apiRequest<any>(
-      replaceParams(API_CONFIG.ENDPOINTS.FRIEND_REQUEST_ACTION, {
-        id: requestId,
-      }),
-      { method: "POST", body: JSON.stringify({ action: "decline" }) },
+      replaceParams(API_CONFIG.ENDPOINTS.FRIEND_REQUEST_ACTION, { id: requestId }),
+      { method: "POST", body: JSON.stringify({ accept: false }) },
     );
   },
 
