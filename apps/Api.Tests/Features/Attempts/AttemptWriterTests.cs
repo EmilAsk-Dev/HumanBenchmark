@@ -9,7 +9,7 @@ namespace Api.Tests.Features.Attempts;
 
 public class AttemptWriterTests
 {
-    private ApplicationDbContext CreateInMemoryDbContext()
+    private static ApplicationDbContext CreateInMemoryDbContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -21,166 +21,158 @@ public class AttemptWriterTests
     [Fact]
     public async Task CreateReactionAsync_CreatesAttemptWithDetails()
     {
-        // Arrange
         using var db = CreateInMemoryDbContext();
         var service = new AttemptWriter(db);
-        var request = new CreateReactionAttemptRequest(150, 180, 5);
 
-        // Act
-        var result = await service.CreateReactionAsync("user-1", request);
+        const int value = 150;
+        var req = new CreateReactionAttemptRequest(BestMs: 150, AvgMs: 180, Attempts: 5);
 
-        // Assert
+        var result = await service.CreateReactionAsync("user-1", value, req);
+
         Assert.NotNull(result);
+        Assert.True(result.Id > 0);
         Assert.Equal("user-1", result.UserId);
         Assert.Equal(GameType.Reaction, result.Game);
-        Assert.Equal(150, result.Value);
+        Assert.Equal(value, result.Value);
 
-        // Verify in database
         var attempt = await db.Attempts
             .Include(a => a.ReactionDetails)
-            .FirstOrDefaultAsync(a => a.Id == result.Id);
+            .SingleAsync(a => a.Id == result.Id);
 
-        Assert.NotNull(attempt);
         Assert.NotNull(attempt.ReactionDetails);
-        Assert.Equal(150, attempt.ReactionDetails.BestMs);
-        Assert.Equal(180, attempt.ReactionDetails.AvgMs);
-        Assert.Equal(5, attempt.ReactionDetails.Attempts);
+        Assert.Equal(req.BestMs, attempt.ReactionDetails.BestMs);
+        Assert.Equal(req.AvgMs, attempt.ReactionDetails.AvgMs);
+        Assert.Equal(req.Attempts, attempt.ReactionDetails.Attempts);
     }
 
     [Fact]
     public async Task CreateTypingAsync_CreatesAttemptWithDetails()
     {
-        // Arrange
         using var db = CreateInMemoryDbContext();
         var service = new AttemptWriter(db);
-        var request = new CreateTypingAttemptRequest(85, 98.5m, 500);
 
-        // Act
-        var result = await service.CreateTypingAsync("user-1", request);
+        const int value = 85;
+        var req = new CreateTypingAttemptRequest(Wpm: 85, Accuracy: 98.5m, Characters: 500);
 
-        // Assert
+        var result = await service.CreateTypingAsync("user-1", value, req);
+
         Assert.NotNull(result);
+        Assert.True(result.Id > 0);
         Assert.Equal("user-1", result.UserId);
         Assert.Equal(GameType.Typing, result.Game);
-        Assert.Equal(85, result.Value);
+        Assert.Equal(value, result.Value);
 
-        // Verify in database
         var attempt = await db.Attempts
             .Include(a => a.TypingDetails)
-            .FirstOrDefaultAsync(a => a.Id == result.Id);
+            .SingleAsync(a => a.Id == result.Id);
 
-        Assert.NotNull(attempt);
         Assert.NotNull(attempt.TypingDetails);
-        Assert.Equal(85, attempt.TypingDetails.Wpm);
-        Assert.Equal(98.5m, attempt.TypingDetails.Accuracy);
-        Assert.Equal(500, attempt.TypingDetails.Characters);
+        Assert.Equal(req.Wpm, attempt.TypingDetails.Wpm);
+        Assert.Equal(req.Accuracy, attempt.TypingDetails.Accuracy);
+        Assert.Equal(req.Characters, attempt.TypingDetails.Characters);
     }
 
     [Fact]
     public async Task CreateChimpAsync_CreatesAttemptWithDetails()
     {
-        // Arrange
         using var db = CreateInMemoryDbContext();
         var service = new AttemptWriter(db);
-        var request = new CreateChimpAttemptRequest(12, 2, 45000);
 
-        // Act
-        var result = await service.CreateChimpAsync("user-1", request);
+        const int value = 12;
+        var req = new CreateChimpAttemptRequest(Level: 12, Mistakes: 2, TimeMs: 45000);
 
-        // Assert
+        var result = await service.CreateChimpAsync("user-1", value, req);
+
         Assert.NotNull(result);
+        Assert.True(result.Id > 0);
         Assert.Equal("user-1", result.UserId);
         Assert.Equal(GameType.ChimpTest, result.Game);
-        Assert.Equal(12, result.Value);
+        Assert.Equal(value, result.Value);
 
-        // Verify in database
         var attempt = await db.Attempts
             .Include(a => a.ChimpDetails)
-            .FirstOrDefaultAsync(a => a.Id == result.Id);
+            .SingleAsync(a => a.Id == result.Id);
 
-        Assert.NotNull(attempt);
         Assert.NotNull(attempt.ChimpDetails);
-        Assert.Equal(12, attempt.ChimpDetails.Level);
-        Assert.Equal(2, attempt.ChimpDetails.Mistakes);
-        Assert.Equal(45000, attempt.ChimpDetails.TimeMs);
+        Assert.Equal(req.Level, attempt.ChimpDetails.Level);
+        Assert.Equal(req.Mistakes, attempt.ChimpDetails.Mistakes);
+        Assert.Equal(req.TimeMs, attempt.ChimpDetails.TimeMs);
     }
 
     [Fact]
     public async Task CreateSequenceAsync_CreatesAttemptWithDetails()
     {
-        // Arrange
         using var db = CreateInMemoryDbContext();
         var service = new AttemptWriter(db);
-        var request = new CreateSequenceAttemptRequest(8, 1, 30000);
 
-        // Act
-        var result = await service.CreateSequenceAsync("user-1", request);
+        const int value = 8;
+        var req = new CreateSequenceAttemptRequest(Level: 8, Mistakes: 1, TimeMs: 30000);
 
-        // Assert
+        var result = await service.CreateSequenceAsync("user-1", value, req);
+
         Assert.NotNull(result);
+        Assert.True(result.Id > 0);
         Assert.Equal("user-1", result.UserId);
         Assert.Equal(GameType.SequenceTest, result.Game);
-        Assert.Equal(8, result.Value);
+        Assert.Equal(value, result.Value);
 
-        // Verify in database
         var attempt = await db.Attempts
             .Include(a => a.SequenceDetails)
-            .FirstOrDefaultAsync(a => a.Id == result.Id);
+            .SingleAsync(a => a.Id == result.Id);
 
-        Assert.NotNull(attempt);
         Assert.NotNull(attempt.SequenceDetails);
-        Assert.Equal(8, attempt.SequenceDetails.Level);
-        Assert.Equal(1, attempt.SequenceDetails.Mistakes);
-        Assert.Equal(30000, attempt.SequenceDetails.TimeMs);
+        Assert.Equal(req.Level, attempt.SequenceDetails.Level);
+        Assert.Equal(req.Mistakes, attempt.SequenceDetails.Mistakes);
+        Assert.Equal(req.TimeMs, attempt.SequenceDetails.TimeMs);
     }
 
     [Fact]
     public async Task CreateReactionAsync_SetsCreatedAtToUtcNow()
     {
-        // Arrange
         using var db = CreateInMemoryDbContext();
         var service = new AttemptWriter(db);
-        var request = new CreateReactionAttemptRequest(150, 180, 5);
+
         var before = DateTime.UtcNow;
-
-        // Act
-        var result = await service.CreateReactionAsync("user-1", request);
-
-        // Assert
+        var result = await service.CreateReactionAsync(
+            "user-1",
+            value: 150,
+            req: new CreateReactionAttemptRequest(150, 180, 5)
+        );
         var after = DateTime.UtcNow;
+
         Assert.InRange(result.CreatedAt, before, after);
-    }
 
-    [Fact]
-    public async Task CreateReactionAsync_ReturnsCorrectDto()
-    {
-        // Arrange
-        using var db = CreateInMemoryDbContext();
-        var service = new AttemptWriter(db);
-        var request = new CreateReactionAttemptRequest(150, 180, 5);
-
-        // Act
-        var result = await service.CreateReactionAsync("user-1", request);
-
-        // Assert
-        Assert.True(result.Id > 0);
-        Assert.Equal("user-1", result.UserId);
-        Assert.Equal(GameType.Reaction, result.Game);
-        Assert.Equal(150, result.Value);
+        // Also verify persisted entity
+        var attempt = await db.Attempts.SingleAsync(a => a.Id == result.Id);
+        Assert.InRange(attempt.CreatedAt, before, after);
     }
 
     [Fact]
     public async Task MultipleAttempts_HaveUniqueIds()
     {
-        // Arrange
         using var db = CreateInMemoryDbContext();
         var service = new AttemptWriter(db);
 
-        // Act
-        var result1 = await service.CreateReactionAsync("user-1", new CreateReactionAttemptRequest(150, 180, 5));
-        var result2 = await service.CreateReactionAsync("user-1", new CreateReactionAttemptRequest(140, 170, 5));
+        var r1 = await service.CreateReactionAsync("user-1", 150, new CreateReactionAttemptRequest(150, 180, 5));
+        var r2 = await service.CreateReactionAsync("user-1", 140, new CreateReactionAttemptRequest(140, 170, 5));
 
-        // Assert
-        Assert.NotEqual(result1.Id, result2.Id);
+        Assert.NotEqual(r1.Id, r2.Id);
+    }
+
+    [Fact]
+    public async Task CreateMethods_PersistAttemptWithCorrectGameAndValue()
+    {
+        using var db = CreateInMemoryDbContext();
+        var service = new AttemptWriter(db);
+
+        var reaction = await service.CreateReactionAsync("user-1", 123, new CreateReactionAttemptRequest(150, 180, 5));
+        var typing = await service.CreateTypingAsync("user-1", 456, new CreateTypingAttemptRequest(85, 98.5m, 500));
+
+        var persisted = await db.Attempts
+            .Where(a => a.Id == reaction.Id || a.Id == typing.Id)
+            .ToListAsync();
+
+        Assert.Contains(persisted, a => a.Id == reaction.Id && a.Game == GameType.Reaction && a.Value == 123);
+        Assert.Contains(persisted, a => a.Id == typing.Id && a.Game == GameType.Typing && a.Value == 456);
     }
 }
