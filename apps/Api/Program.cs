@@ -44,6 +44,7 @@ builder.Services.AddScoped<MessageService>();
 builder.Services.AddScoped<FriendsService>();
 builder.Services.AddScoped<RealtimeMessageBroadcaster>();
 builder.Services.AddSingleton<IPresenceTracker, PresenceTracker>();
+builder.Services.AddSingleton<NameIdUserIdProvider>();
 
 builder.Services.AddSignalR();
 
