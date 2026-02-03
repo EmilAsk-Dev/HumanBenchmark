@@ -9,6 +9,8 @@ pool:
 variables:
   buildConfiguration: "Release"
   apiProject: "apps/Api/Api.csproj"
+  apiStartupProject: "apps/Api/Api.csproj"
+  testProject: "apps/Api.Tests/Api.Tests.csproj"
   webRoot: "apps/web"
   dotnetSdkVersion: "10.0.100"
   apiOutDir: "$(Build.ArtifactStagingDirectory)/api_out"
@@ -73,7 +75,7 @@ steps:
   displayName: "Run Frontend Tests"
 
 # ============================
-# API Restore + Publish (self-contained linux-x64)
+# Restore API (linux-x64)
 # ============================
 - task: DotNetCoreCLI@2
   displayName: "Restore API (linux-x64)"
@@ -86,8 +88,11 @@ steps:
 # Run API Tests
 # ============================
 - script: |
-    dotnet restore apps/Api.Tests/Api.Tests.csproj
-    dotnet test apps/Api.Tests/Api.Tests.csproj --configuration $(buildConfiguration) --logger "trx;LogFileName=test-results.trx" --results-directory "$(Build.ArtifactStagingDirectory)/TestResults"
+    dotnet restore "$(testProject)"
+    dotnet test "$(testProject)" \
+      --configuration $(buildConfiguration) \
+      --logger "trx;LogFileName=test-results.trx" \
+      --results-directory "$(Build.ArtifactStagingDirectory)/TestResults"
   displayName: "Run API Tests"
 
 - task: PublishTestResults@2
@@ -99,7 +104,27 @@ steps:
   condition: succeededOrFailed()
 
 # ============================
-# API Restore + Publish (self-contained linux-x64)
+# Apply EF Core migrations (Azure SQL) - BEFORE deploy
+# Requires pipeline secret variable:
+#   ConnectionStrings__DefaultConnection
+# ============================
+- script: |
+    set -e
+    export PATH="$PATH:$HOME/.dotnet/tools"
+    dotnet tool update --global dotnet-ef
+    dotnet ef --version
+
+    echo "Applying EF Core migrations..."
+    dotnet ef database update \
+      --project "$(apiProject)" \
+      --startup-project "$(apiStartupProject)" \
+      --configuration $(buildConfiguration)
+  displayName: "Apply DB migrations (EF Core)"
+  env:
+    ConnectionStrings__DefaultConnection: $(ConnectionStrings__DefaultConnection)
+
+# ============================
+# Publish API (self-contained linux-x64)
 # ============================
 - task: DotNetCoreCLI@2
   displayName: "Publish API (self-contained linux-x64)"
