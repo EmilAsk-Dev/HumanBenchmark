@@ -44,6 +44,7 @@ builder.Services.AddScoped<MessageService>();
 builder.Services.AddScoped<FriendsService>();
 builder.Services.AddScoped<RealtimeMessageBroadcaster>();
 builder.Services.AddSingleton<IPresenceTracker, PresenceTracker>();
+builder.Services.AddSingleton<RateLimitState>();
 
 builder.Services.AddSignalR();
 
@@ -96,8 +97,38 @@ app.UseRequestLogging();
 
 app.Use(async (ctx, next) =>
 {
-    Console.WriteLine($"REQ {ctx.Request.Method} {ctx.Request.Path}");
+    var userId = ctx.User?.Identity?.IsAuthenticated == true
+        ? ctx.User.FindFirst("sub")?.Value
+          ?? ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+        : null;
+
+    var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    var key = userId is not null ? $"user:{userId}" : $"ip:{ip}";
+
+    const int limit = 60;
+    var window = TimeSpan.FromMinutes(1);
+
+    var rl = ctx.RequestServices.GetRequiredService<RateLimitState>();
+    var (remaining, resetUnix) = rl.Hit(key, limit, window);
+
+    ctx.Response.OnStarting(() =>
+    {
+        ctx.Response.Headers["RateLimit-Limit"] = limit.ToString();
+        ctx.Response.Headers["RateLimit-Remaining"] = remaining.ToString();
+        ctx.Response.Headers["RateLimit-Reset"] = resetUnix.ToString();
+        ctx.Response.Headers["RateLimit-Policy"] = $"{limit};w={(int)window.TotalSeconds}";
+        return Task.CompletedTask;
+    });
+
     await next();
+
+    if (ctx.Response.StatusCode == StatusCodes.Status429TooManyRequests)
+    {
+        var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var retryAfter = Math.Max(0, (int)(resetUnix - nowUnix));
+        if (!ctx.Response.Headers.ContainsKey("Retry-After"))
+            ctx.Response.Headers["Retry-After"] = retryAfter.ToString();
+    }
 });
 
 if (!app.Environment.IsDevelopment())
