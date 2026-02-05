@@ -38,8 +38,8 @@ const NotificationsContext = createContext<
 
 const SIGNALR_CONFIG = {
   getUrl: () => {
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/hubs/notifications`;
+    const apiBase = import.meta.env.VITE_API_BASE_URL ?? window.location.origin;
+    return `${apiBase}/hubs/notifications`;
   },
   RECONNECT_DELAYS: [0, 2000, 5000, 10000, 30000],
 };

@@ -9,5 +9,5 @@ public class NotificationSender
     public NotificationSender(IHubContext<NotificationsHub> hub) => _hub = hub;
 
     public Task SendToUserAsync(string userId, object payload)
-        => _hub.Clients.User(userId).SendAsync("Notification", payload);
+        => _hub.Clients.User(userId).SendAsync("ReceiveNotification", payload);
 }
