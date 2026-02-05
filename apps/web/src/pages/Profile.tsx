@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useProfile } from "@/hooks/useProfile";
@@ -124,10 +124,30 @@ const gameToTestType: Record<number, number> = {
 };
 
 export default function Profile() {
+  const { username } = useParams<{ username?: string }>();
+
   const navigate = useNavigate();
-  const { user, stats, badges, unlockedBadges, lockedBadges, pbByTest, isLoading, error } = useProfile();
+  const {
+    user,
+    stats,
+    badges,
+    unlockedBadges,
+    lockedBadges,
+    pbByTest,
+    isLoading,
+    error,
+    fetchProfile,
+  } = useProfile();
   const { logout } = useAuth();
   const [showFriendSearch, setShowFriendSearch] = useState(false);
+
+  useEffect(() => {
+    if (username) {
+      fetchProfile({ username });
+    } else {
+      fetchProfile(); // me
+    }
+  }, [username, fetchProfile]);
 
   if (isLoading) {
     return (

@@ -1,6 +1,7 @@
 import { LikeTargetType } from "../types/index.js";
 import { TestType } from "@/types";
 import type { CreateAttemptRequest, AttemptDto } from "@/types/test";
+import { useNotifications } from "@/contexts/NotificationsContext";
 export function likeTargetTypeToRoute(
   type: LikeTargetType,
 ): "post" | "comment" {
@@ -20,6 +21,7 @@ export const API_CONFIG = {
     // Users
     USERS: "/users",
     USER_PROFILE: "/profile/:id",
+    USER_PROFILE_BY_USERNAME: "/profile/username/:username",
     SEARCH_USERS: "/users/search",
 
     // Feed
@@ -351,6 +353,13 @@ export const api = {
     const endpoint = userId
       ? replaceParams(API_CONFIG.ENDPOINTS.USER_PROFILE, { id: userId })
       : API_CONFIG.ENDPOINTS.PROFILE;
+    return apiRequest<any>(endpoint);
+  },
+
+  async getUserProfileByUsername(username: string) {
+    const endpoint = replaceParams(API_CONFIG.ENDPOINTS.USER_PROFILE_BY_USERNAME, {
+      username,
+    });
     return apiRequest<any>(endpoint);
   },
 

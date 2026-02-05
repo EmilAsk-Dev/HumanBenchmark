@@ -13,7 +13,7 @@ import * as signalR from "@microsoft/signalr";
 
 export interface Notification {
   id: string;
-  type: "message" | "friend_request";
+  type: string;
   title: string;
   message: string;
   time: string;

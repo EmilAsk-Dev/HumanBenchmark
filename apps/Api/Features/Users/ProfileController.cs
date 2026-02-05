@@ -33,10 +33,28 @@ public class ProfileController : ControllerBase
         return Ok(profile);
     }
 
+
     [HttpGet("{userId}")]
+    [AllowAnonymous]
     public async Task<ActionResult<ProfileDto>> GetProfile(string userId)
     {
         var profile = await _svc.GetProfileAsync(userId);
+
+        if (profile == null)
+            return NotFound();
+
+        return Ok(profile);
+    }
+
+
+    [HttpGet("username/{username}")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ProfileDto>> GetProfileByUsername(string username)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+            return BadRequest("Username is required.");
+
+        var profile = await _svc.GetProfileByUsernameAsync(username);
 
         if (profile == null)
             return NotFound();

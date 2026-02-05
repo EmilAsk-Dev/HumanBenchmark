@@ -75,13 +75,21 @@ const App = () => (
                 }
               />
               <Route
+                path="/profile/:username"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              {/* <Route
                 path="/profile/:id"
                 element={
                   <ProtectedRoute>
                     <FriendProfile />
                   </ProtectedRoute>
                 }
-              />
+              /> */}
               <Route
                 path="/tests"
                 element={

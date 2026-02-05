@@ -18,6 +18,11 @@ type PbByTest = Record<
   }
 >;
 
+type FetchArgs = {
+  userId?: string;
+  username?: string;
+};
+
 export function useProfile() {
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<TestStats[]>([]);
@@ -29,11 +34,19 @@ export function useProfile() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProfile = useCallback(async (userId?: string) => {
+  const fetchProfile = useCallback(async (args?: FetchArgs) => {
     setIsLoading(true);
     setError(null);
 
-    const profileResult = await api.getProfile(userId);
+    let profileResult;
+
+    if (args?.username) {
+      profileResult = await api.getUserProfileByUsername(args.username);
+    } else if (args?.userId) {
+      profileResult = await api.getProfile(args.userId);
+    } else {
+      profileResult = await api.getProfile();
+    }
 
     if (profileResult.error) {
       setError(profileResult.error);
