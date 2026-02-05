@@ -9,6 +9,7 @@ import React, {
 import { toast } from "sonner";
 import { MessageCircle, UserPlus } from "lucide-react";
 import { getAuthToken } from "@/lib/api";
+import * as signalR from "@microsoft/signalr";
 
 export interface Notification {
   id: string;
@@ -35,16 +36,12 @@ const NotificationsContext = createContext<
   NotificationsContextType | undefined
 >(undefined);
 
-// WebSocket configuration
-const WS_CONFIG = {
-  // Convert HTTP URL to WebSocket URL
+const SIGNALR_CONFIG = {
   getUrl: () => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.host;
-    return `${protocol}//${host}/ws/notifications`;
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/hubs/notifications`;
   },
-  RECONNECT_DELAY: 3000,
-  MAX_RECONNECT_ATTEMPTS: 5,
+  RECONNECT_DELAYS: [0, 2000, 5000, 10000, 30000],
 };
 
 export function NotificationsProvider({
@@ -58,11 +55,8 @@ export function NotificationsProvider({
   });
   const [isConnected, setIsConnected] = useState(false);
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectAttemptsRef = useRef(0);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const connectionRef = useRef<signalR.HubConnection | null>(null);
 
-  // Save to localStorage whenever notifications change
   useEffect(() => {
     localStorage.setItem("notifications", JSON.stringify(notifications));
   }, [notifications]);
@@ -79,7 +73,6 @@ export function NotificationsProvider({
 
       setNotifications((prev) => [newNotification, ...prev]);
 
-      // Show toast popup
       const icon =
         notification.type === "message" ? (
           <MessageCircle className="h-4 w-4 text-primary" />
@@ -115,113 +108,112 @@ export function NotificationsProvider({
     setNotifications([]);
   }, []);
 
-  // WebSocket connection logic
-  const connectWebSocket = useCallback(() => {
+  const connectSignalR = useCallback(async () => {
     const token = getAuthToken();
 
-    // Don't connect if no auth token
     if (!token) {
-      console.log("[WebSocket] No auth token, skipping connection");
+      console.log("[SignalR] No auth token, skipping connection");
       return;
     }
 
-    // Don't reconnect if already connected
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    if (connectionRef.current?.state === signalR.HubConnectionState.Connected) {
       return;
     }
 
     try {
-      const wsUrl = `${WS_CONFIG.getUrl()}?token=${encodeURIComponent(token)}`;
-      console.log("[WebSocket] Connecting to:", WS_CONFIG.getUrl());
+      const hubUrl = SIGNALR_CONFIG.getUrl();
+      console.log("[SignalR] Connecting to:", hubUrl);
 
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
+      const connection = new signalR.HubConnectionBuilder()
+        .withUrl(hubUrl, {
+          accessTokenFactory: () => token,
+        })
+        .withAutomaticReconnect(SIGNALR_CONFIG.RECONNECT_DELAYS)
+        .configureLogging(signalR.LogLevel.Information)
+        .build();
 
-      ws.onopen = () => {
-        console.log("[WebSocket] Connected");
-        setIsConnected(true);
-        reconnectAttemptsRef.current = 0;
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log("[WebSocket] Received:", data);
-
-          // Handle different notification types from backend
-          if (data.type === "message" || data.type === "friend_request") {
-            addNotification({
-              type: data.type,
-              title:
-                data.title ||
-                (data.type === "message" ? "Nytt meddelande" : "Vänförfrågan"),
-              message: data.message || data.content || "",
-              time: data.time || new Date().toLocaleString("sv-SE"),
-              fromUserId: data.fromUserId || data.senderId,
-            });
-          }
-        } catch (err) {
-          console.error("[WebSocket] Failed to parse message:", err);
-        }
-      };
-
-      ws.onclose = (event) => {
-        console.log("[WebSocket] Disconnected:", event.code, event.reason);
+      connection.onreconnecting((error) => {
+        console.log("[SignalR] Reconnecting...", error);
         setIsConnected(false);
-        wsRef.current = null;
+      });
 
-        // Attempt reconnection if not a clean close
-        if (
-          event.code !== 1000 &&
-          reconnectAttemptsRef.current < WS_CONFIG.MAX_RECONNECT_ATTEMPTS
-        ) {
-          reconnectAttemptsRef.current += 1;
-          const delay =
-            WS_CONFIG.RECONNECT_DELAY * reconnectAttemptsRef.current;
-          console.log(
-            `[WebSocket] Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})`,
-          );
+      connection.onreconnected((connectionId) => {
+        console.log("[SignalR] Reconnected:", connectionId);
+        setIsConnected(true);
+      });
 
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connectWebSocket();
-          }, delay);
-        }
-      };
+      connection.onclose((error) => {
+        console.log("[SignalR] Connection closed:", error);
+        setIsConnected(false);
+        connectionRef.current = null;
+      });
 
-      ws.onerror = (error) => {
-        console.error("[WebSocket] Error:", error);
-      };
+      connection.on("ReceiveMessage", (data: any) => {
+        console.log("[SignalR] ReceiveMessage:", data);
+        addNotification({
+          type: "message",
+          title: data.senderName || "Nytt meddelande",
+          message: data.content || data.message || "",
+          time: data.sentAt || new Date().toLocaleString("sv-SE"),
+          fromUserId: data.senderId?.toString(),
+        });
+      });
+
+      connection.on("ReceiveFriendRequest", (data: any) => {
+        console.log("[SignalR] ReceiveFriendRequest:", data);
+        addNotification({
+          type: "friend_request",
+          title: "Ny vänförfrågan",
+          message:
+            data.fromUsername || data.message || "Någon vill bli din vän",
+          time: data.time || new Date().toLocaleString("sv-SE"),
+          fromUserId: data.fromUserId?.toString(),
+        });
+      });
+
+      connection.on("ReceiveNotification", (data: any) => {
+        console.log("[SignalR] ReceiveNotification:", data);
+        addNotification({
+          type: data.type || "message",
+          title: data.title || "Notis",
+          message: data.message || data.content || "",
+          time: data.time || new Date().toLocaleString("sv-SE"),
+          fromUserId: data.fromUserId?.toString(),
+        });
+      });
+
+      await connection.start();
+      console.log("[SignalR] Connected");
+      connectionRef.current = connection;
+      setIsConnected(true);
     } catch (err) {
-      console.error("[WebSocket] Failed to connect:", err);
+      console.error("[SignalR] Failed to connect:", err);
+      setIsConnected(false);
     }
   }, [addNotification]);
 
-  // Disconnect WebSocket
-  const disconnectWebSocket = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
+  const disconnectSignalR = useCallback(async () => {
+    if (connectionRef.current) {
+      try {
+        await connectionRef.current.stop();
+        console.log("[SignalR] Disconnected");
+      } catch (err) {
+        console.error("[SignalR] Error disconnecting:", err);
+      }
+      connectionRef.current = null;
     }
-
-    if (wsRef.current) {
-      wsRef.current.close(1000, "User disconnected");
-      wsRef.current = null;
-    }
-
     setIsConnected(false);
   }, []);
 
-  // Connect on mount, disconnect on unmount
   useEffect(() => {
-    connectWebSocket();
+    connectSignalR();
 
-    // Listen for auth changes (login/logout)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "auth_token") {
         if (e.newValue) {
-          connectWebSocket();
+          connectSignalR();
         } else {
-          disconnectWebSocket();
+          disconnectSignalR();
         }
       }
     };
@@ -230,19 +222,18 @@ export function NotificationsProvider({
 
     return () => {
       window.removeEventListener("storage", handleStorageChange);
-      disconnectWebSocket();
+      disconnectSignalR();
     };
-  }, [connectWebSocket, disconnectWebSocket]);
+  }, [connectSignalR, disconnectSignalR]);
 
-  // Reconnect when auth token changes within same tab
   useEffect(() => {
     const token = getAuthToken();
     if (token && !isConnected) {
-      connectWebSocket();
+      connectSignalR();
     } else if (!token && isConnected) {
-      disconnectWebSocket();
+      disconnectSignalR();
     }
-  }, [connectWebSocket, disconnectWebSocket, isConnected]);
+  }, [connectSignalR, disconnectSignalR, isConnected]);
 
   return (
     <NotificationsContext.Provider
