@@ -106,7 +106,7 @@ export default function Friends() {
                   <FriendsList
                     items={onlineItems}
                     onMessageClick={handleMessageClick}
-                    onProfileClick={(friend) => navigate(`/profile/${friend.id}`)}
+                    onProfileClick={(friend) => navigate(`/profile/${friend.userName}`)}
                   />
                 </div>
               )}
@@ -123,7 +123,7 @@ export default function Friends() {
                   <FriendsList
                     items={offlineItems}
                     onMessageClick={handleMessageClick}
-                    onProfileClick={(friend) => navigate(`/profile/${friend.id}`)}
+                    onProfileClick={(friend) => navigate(`/profile/${friend.userName}`)}
                   />
                 </div>
               )}

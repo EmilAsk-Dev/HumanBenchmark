@@ -41,6 +41,39 @@ public class ProfileService
         );
     }
 
+    public async Task<ProfileDto?> GetProfileByUsernameAsync(string username)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+            return null;
+
+        var normalized = username.Trim();
+
+        var user = await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.UserName != null && u.UserName.ToLower() == normalized.ToLower());
+
+        if (user == null) return null;
+
+        var userId = user.Id;
+
+        var totalSessions = await GetTotalSessionsAsync(userId);
+        var streakDays = await GetStreakDaysAsync(userId);
+        var pbByTest = await GetPersonalBestsAsync(userId);
+        var recentRuns = await GetRecentRunsAsync(userId);
+        var seriesByTest = await GetSeriesByTestAsync(userId);
+
+        return new ProfileDto(
+            userId,
+            user.UserName ?? "Unknown",
+            user.AvatarUrl,
+            totalSessions,
+            streakDays,
+            pbByTest,
+            recentRuns,
+            seriesByTest
+        );
+    }
+
     private async Task<int> GetTotalSessionsAsync(string userId)
     {
         return await _db.Attempts
@@ -58,7 +91,7 @@ public class ProfileService
             .Distinct()
             .OrderByDescending(d => d)
             .ToListAsync();
-        
+
         if (dates.Count == 0)
             return 0;
 

@@ -1,17 +1,19 @@
+using System.Security.Claims;
 using Api.Data;
 using Api.Domain;
 using Api.Middleware;
 using DotNetEnv;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using System.Threading.RateLimiting;
 using Api.Features.Messages;
 using Api.Features.Friends;
 using Api.hubs;
 using Api.Features.WebSocket;
-
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,7 +47,6 @@ builder.Services.AddScoped<FriendsService>();
 builder.Services.AddScoped<RealtimeMessageBroadcaster>();
 builder.Services.AddScoped<NotificationSender>();
 builder.Services.AddSingleton<IPresenceTracker, PresenceTracker>();
-builder.Services.AddSingleton<RateLimitState>();
 
 builder.Services.AddSignalR();
 
@@ -66,16 +67,34 @@ builder.Services
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+});
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    options.AddFixedWindowLimiter("fixed", opt =>
+    options.AddPolicy("fixed", context =>
     {
-        opt.PermitLimit = 60;
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        opt.QueueLimit = 0;
+        var userId =
+            context.User?.FindFirstValue(ClaimTypes.NameIdentifier) ??
+            context.User?.FindFirst("sub")?.Value;
+
+        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var key = !string.IsNullOrWhiteSpace(userId) ? $"user:{userId}" : $"ip:{ip}";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: key,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
     });
 });
 
@@ -93,44 +112,9 @@ if (!builder.Environment.IsDevelopment())
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
+
 app.UseRequestLogging();
-
-
-app.Use(async (ctx, next) =>
-{
-    var userId = ctx.User?.Identity?.IsAuthenticated == true
-        ? ctx.User.FindFirst("sub")?.Value
-          ?? ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-        : null;
-
-    var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-    var key = userId is not null ? $"user:{userId}" : $"ip:{ip}";
-
-    const int limit = 60;
-    var window = TimeSpan.FromMinutes(1);
-
-    var rl = ctx.RequestServices.GetRequiredService<RateLimitState>();
-    var (remaining, resetUnix) = rl.Hit(key, limit, window);
-
-    ctx.Response.OnStarting(() =>
-    {
-        ctx.Response.Headers["RateLimit-Limit"] = limit.ToString();
-        ctx.Response.Headers["RateLimit-Remaining"] = remaining.ToString();
-        ctx.Response.Headers["RateLimit-Reset"] = resetUnix.ToString();
-        ctx.Response.Headers["RateLimit-Policy"] = $"{limit};w={(int)window.TotalSeconds}";
-        return Task.CompletedTask;
-    });
-
-    await next();
-
-    if (ctx.Response.StatusCode == StatusCodes.Status429TooManyRequests)
-    {
-        var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var retryAfter = Math.Max(0, (int)(resetUnix - nowUnix));
-        if (!ctx.Response.Headers.ContainsKey("Retry-After"))
-            ctx.Response.Headers["Retry-After"] = retryAfter.ToString();
-    }
-});
 
 if (!app.Environment.IsDevelopment())
 {
@@ -138,11 +122,10 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
-app.UseRateLimiter();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseRateLimiter();
 
 app.MapGet("/debug", () => Results.Ok(new
 {

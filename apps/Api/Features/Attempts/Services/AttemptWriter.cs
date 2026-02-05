@@ -57,7 +57,7 @@ public class AttemptWriter
 
         return ToDto(attempt);
     }
-
+    
     public async Task<AttemptDto> CreateChimpAsync(string userId, int value, CreateChimpAttemptRequest req)
     {
         var attempt = new Attempt
