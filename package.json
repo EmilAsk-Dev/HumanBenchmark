@@ -8,7 +8,7 @@
     "dev:api": "dotenv -e .env -- concurrently --keepalive -n api,open -c auto \"dotnet run --project apps/Api\" \"node ./scripts/open-api.mjs\"",
     "dev:web": "dotenv -e .env -- concurrently --keepalive -n web,open -c auto \"npm --prefix apps/Web run dev\" \"node ./scripts/open-web.mjs\"",
     "dev:build": "dotnet build ./apps/Api/Api.csproj",
-    "install:all": "npm install && npm --prefix apps/Web install && dotnet restore apps/Api",
+    "install:all": "npm install && npm --prefix apps/Web install && dotnet restore apps/Api && dotnet restore apps/Api.Tests",
     "db:add": "dotenv -e .env -- dotnet ef migrations add --project apps/Api --startup-project apps/Api",
     "db:update": "dotenv -e .env -- dotnet ef database update --project apps/Api --startup-project apps/Api",
     "db:remove": "dotenv -e .env -- dotnet ef migrations remove --project apps/Api --startup-project apps/Api",
@@ -16,7 +16,8 @@
     "build": "npm --prefix apps/Web run build",
     "start:api": "powershell -NoProfile -Command \"$env:ASPNETCORE_ENVIRONMENT='Production'; dotnet apps/Api/out/Api.dll\"",
     "start:web": "npx --yes serve -s apps/Web/dist -l 5173",
-    "start:prod": "concurrently -n api,web \"npm run start:api\" \"npm run start:web\""
+    "start:prod": "concurrently -n api,web \"npm run start:api\" \"npm run start:web\"",
+    "test:api": "dotnet test apps/Api.Tests/Api.Tests.csproj"
   },
   "keywords": [],
   "author": "",

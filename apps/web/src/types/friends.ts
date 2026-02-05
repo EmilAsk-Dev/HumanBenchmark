@@ -1,12 +1,19 @@
 export interface Friend {
   id: string;
-  username: string;
-  displayName: string;
-  avatar: string;
-  status: "online" | "offline" | "playing";
+  userName: string;
+  avatar?: string;
+  status?: "online" | "offline" | "playing" | string;
   lastSeen?: Date;
   currentGame?: string;
 }
+
+export interface FriendListItem {
+  user: Friend;
+  createdAt: string;
+}
+
+
+
 
 export interface FriendRequest {
   id: string;
@@ -31,6 +38,7 @@ export interface SharedScore {
 }
 
 export interface Conversation {
+  conversationId: number;
   friend: Friend;
   messages: Message[];
   lastMessage?: Message;

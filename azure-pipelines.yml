@@ -7,11 +7,22 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  buildConfiguration: "Release"
-  apiProject: "apps/Api/Api.csproj"
-  webRoot: "apps/web"
-  dotnetSdkVersion: "10.0.100"
-  apiOutDir: "$(Build.ArtifactStagingDirectory)/api_out"
+- group: Db
+
+- name: buildConfiguration
+  value: "Release"
+- name: apiProject
+  value: "apps/Api/Api.csproj"
+- name: apiStartupProject
+  value: "apps/Api/Api.csproj"
+- name: testProject
+  value: "apps/Api.Tests/Api.Tests.csproj"
+- name: webRoot
+  value: "apps/web"
+- name: dotnetSdkVersion
+  value: "10.0.100"
+- name: apiOutDir
+  value: "$(Build.ArtifactStagingDirectory)/api_out"
 
 steps:
 # ============================
@@ -65,7 +76,15 @@ steps:
   displayName: "Build Web"
 
 # ============================
-# API Restore + Publish (self-contained linux-x64)
+# Run Frontend Tests
+# ============================
+- script: |
+    cd "$(webRoot)"
+    npm run test -- --run
+  displayName: "Run Frontend Tests"
+
+# ============================
+# Restore API (linux-x64)
 # ============================
 - task: DotNetCoreCLI@2
   displayName: "Restore API (linux-x64)"
@@ -74,6 +93,48 @@ steps:
     projects: "$(apiProject)"
     arguments: "-r linux-x64"
 
+# ============================
+# Run API Tests
+# ============================
+- script: |
+    dotnet restore "$(testProject)"
+    dotnet test "$(testProject)" \
+      --configuration $(buildConfiguration) \
+      --logger "trx;LogFileName=test-results.trx" \
+      --results-directory "$(Build.ArtifactStagingDirectory)/TestResults"
+  displayName: "Run API Tests"
+
+- task: PublishTestResults@2
+  displayName: "Publish Test Results"
+  inputs:
+    testResultsFormat: "VSTest"
+    testResultsFiles: "$(Build.ArtifactStagingDirectory)/TestResults/*.trx"
+    failTaskOnFailedTests: true
+  condition: succeededOrFailed()
+
+# ============================
+# Apply EF Core migrations (Azure SQL) - BEFORE deploy
+# Requires pipeline secret variable:
+#   ConnectionStrings__DefaultConnection
+# ============================
+- script: |
+    set -e
+    export PATH="$PATH:$HOME/.dotnet/tools"
+    dotnet tool update --global dotnet-ef
+    dotnet ef --version
+
+    echo "Applying EF Core migrations..."
+    dotnet ef database update \
+      --project "$(apiProject)" \
+      --startup-project "$(apiStartupProject)" \
+      --configuration $(buildConfiguration)
+  displayName: "Apply DB migrations (EF Core)"
+  env:
+    ConnectionStrings__DefaultConnection: $(ConnectionStrings__DefaultConnection)
+
+# ============================
+# Publish API (self-contained linux-x64)
+# ============================
 - task: DotNetCoreCLI@2
   displayName: "Publish API (self-contained linux-x64)"
   inputs:

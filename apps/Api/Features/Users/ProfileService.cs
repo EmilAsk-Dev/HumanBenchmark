@@ -58,7 +58,7 @@ public class ProfileService
             .Distinct()
             .OrderByDescending(d => d)
             .ToListAsync();
-
+        
         if (dates.Count == 0)
             return 0;
 
@@ -203,7 +203,7 @@ public class ProfileService
                     attempt.SequenceDetails.Level,
                     attempt.SequenceDetails.Mistakes,
                     attempt.SequenceDetails.TimeMs
-                )   
+                )
         );
     }
 }
