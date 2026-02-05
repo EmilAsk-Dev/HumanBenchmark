@@ -9,10 +9,12 @@ namespace Api.Features.Comments;
 public class CommentsController : ControllerBase
 {
     private readonly CommentService _comments;
+    private readonly ILogger<CommentsController> _logger;
 
-    public CommentsController(CommentService comments)
+    public CommentsController(CommentService comments, ILogger<CommentsController> logger)
     {
         _comments = comments;
+        _logger = logger;
     }
 
     private string Me => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -23,14 +25,25 @@ public class CommentsController : ControllerBase
         long postId,
         [FromQuery] int skip = 0,
         [FromQuery] int take = 20)
-        => _comments.GetForPostAsync(postId, Me, skip, take);
+    {
+        _logger.LogDebug("Get comments for post {PostId} - skip: {Skip}, take: {Take}", postId, skip, take);
+        return _comments.GetForPostAsync(postId, Me, skip, take);
+    }
 
     [HttpPost("api/posts/{postId}/comments")]
     [Tags("Comments")]
     public async Task<ActionResult<CommentDto>> Add(long postId, [FromBody] CreateCommentRequest req)
     {
+        _logger.LogDebug("Add comment to post {PostId}", postId);
+
         var created = await _comments.AddAsync(postId, Me, req);
-        if (created is null) return NotFound();
+        if (created is null)
+        {
+            _logger.LogWarning("Failed to add comment - post {PostId} not found", postId);
+            return NotFound();
+        }
+
+        _logger.LogInformation("User {UserId} added comment {CommentId} to post {PostId}", Me, created.Id, postId);
         return Ok(created);
     }
 
@@ -38,9 +51,11 @@ public class CommentsController : ControllerBase
     [Tags("Comments")]
     public async Task<IActionResult> Delete(long postId, long commentId)
     {
+        _logger.LogDebug("Delete comment {CommentId} from post {PostId}", commentId, postId);
+
         await _comments.DeleteAsync(commentId, Me);
+
+        _logger.LogInformation("User {UserId} deleted comment {CommentId}", Me, commentId);
         return NoContent();
     }
-
-
 }
