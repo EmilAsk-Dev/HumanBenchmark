@@ -2,17 +2,22 @@ using Api.Data;
 using Api.Domain.Friends;
 using Microsoft.EntityFrameworkCore;
 using Api.Features.Friends.Dtos;
+using Api.Features.WebSocket;
+
 
 namespace Api.Features.Friends;
 
 public class FriendsService
 {
     private readonly ApplicationDbContext _db;
+    private readonly NotificationSender _notifications;
 
-    public FriendsService(ApplicationDbContext db)
+    public FriendsService(ApplicationDbContext db, NotificationSender notifications)
     {
         _db = db;
+        _notifications = notifications;
     }
+
 
     private static (string A, string B) OrderPair(string u1, string u2) =>
         string.CompareOrdinal(u1, u2) < 0 ? (u1, u2) : (u2, u1);
@@ -158,6 +163,16 @@ public class FriendsService
         });
 
         await _db.SaveChangesAsync();
+
+        await _notifications.SendToUserAsync(toUserId, new
+{
+    type = "friend_request",
+    title = "Ny vänförfrågan",
+    message = "Du har fått en ny vänförfrågan",
+    fromUserId = me,
+    time = DateTime.UtcNow.ToString("s")
+});
+
     }
 
     public async Task RespondToRequestAsync(string me, long requestId, bool accept)

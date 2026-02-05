@@ -2,7 +2,7 @@
 using Api.Data;
 using Api.Domain.Message;
 using Api.Features.Messages.Dtos;
-using Api.Features.WebSocket; // ✅ add
+using Api.Features.WebSocket;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Features.Messages;
@@ -10,13 +10,19 @@ namespace Api.Features.Messages;
 public class MessageService
 {
     private readonly ApplicationDbContext _db;
-    private readonly RealtimeMessageBroadcaster _realtime;
+private readonly RealtimeMessageBroadcaster _realtime;
+private readonly NotificationSender _notifications;
 
-    public MessageService(ApplicationDbContext db, RealtimeMessageBroadcaster realtime)
-    {
-        _db = db;
-        _realtime = realtime;
-    }
+public MessageService(
+    ApplicationDbContext db,
+    RealtimeMessageBroadcaster realtime,
+    NotificationSender notifications)
+{
+    _db = db;
+    _realtime = realtime;
+    _notifications = notifications;
+}
+
 
     private static (string A, string B) Normalize(string u1, string u2)
         => string.CompareOrdinal(u1, u2) < 0 ? (u1, u2) : (u2, u1);
@@ -65,13 +71,24 @@ public class MessageService
             .ToListAsync();
     }
 
-    public async Task<MessageDto> SendMessageAsync(string me, string friendId, string content)
+public async Task<MessageDto> SendMessageAsync(string me, string friendId, string content)
+{
+    var convo = await GetOrCreateConversationAsync(me, friendId, create: true);
+
+    var dto = await _realtime.SendAsync(convo.Id, me, content);
+
+    await _notifications.SendToUserAsync(friendId, new
     {
-        var convo = await GetOrCreateConversationAsync(me, friendId, create: true);
+        type = "message",
+        title = "Nytt meddelande",
+        message = content,
+        fromUserId = me,
+        time = DateTime.UtcNow.ToString("s")
+    });
 
+    return dto;
+}
 
-        return await _realtime.SendAsync(convo.Id, me, content);
-    }
 
     private async Task<Conversation?> GetOrCreateConversationAsync(string me, string friendId, bool create)
     {

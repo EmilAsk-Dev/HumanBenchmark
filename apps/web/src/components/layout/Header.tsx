@@ -1,71 +1,25 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Bell, Moon, Sun, X, MessageCircle, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/useTheme";
+import { useNotifications } from "@/contexts/NotificationsContext";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-interface Notification {
-  id: string;
-  type: "message" | "friend_request";
-  title: string;
-  message: string;
-  time: string;
-  read: boolean;
-  icon: React.ReactNode;
-  fromUserId?: string;
-}
-
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "message",
-    title: "Nytt meddelande från Emma",
-    message: "Absolut, jag är redo!",
-    time: "3 min sedan",
-    read: false,
-    icon: <MessageCircle className="h-4 w-4 text-primary" />,
-    fromUserId: "1",
-  },
-  {
-    id: "2",
-    type: "friend_request",
-    title: "Ny vänförfrågan",
-    message: "Ryan Kim vill bli din vän",
-    time: "30 min sedan",
-    read: false,
-    icon: <UserPlus className="h-4 w-4 text-green-500" />,
-    fromUserId: "8",
-  },
-  {
-    id: "3",
-    type: "message",
-    title: "Marcus delade ett resultat",
-    message: "Chimp Test: Level 14 🧠",
-    time: "1 tim sedan",
-    read: true,
-    icon: <MessageCircle className="h-4 w-4 text-primary" />,
-    fromUserId: "2",
-  },
-];
-
 export function Header() {
   const { isDark, toggleTheme } = useTheme();
-  const [notifications, setNotifications] = useState(mockNotifications);
-  const [isOpen, setIsOpen] = useState(false);
+  const { notifications, unreadCount, markAllRead, clearNotification } =
+    useNotifications();
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
-
-  const clearNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  const getIcon = (type: "message" | "friend_request") => {
+    return type === "message" ? (
+      <MessageCircle className="h-4 w-4 text-primary" />
+    ) : (
+      <UserPlus className="h-4 w-4 text-green-500" />
+    );
   };
 
   return (
@@ -81,7 +35,7 @@ export function Header() {
         </Link>
 
         <div className="flex items-center gap-2">
-          <Popover open={isOpen} onOpenChange={setIsOpen}>
+          <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
@@ -94,7 +48,7 @@ export function Header() {
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0" align="end">
               <div className="flex items-center justify-between border-b border-border p-3">
-                <h3 className="font-semibold text-foreground">Notifications</h3>
+                <h3 className="font-semibold text-foreground">Notiser</h3>
                 {unreadCount > 0 && (
                   <Button
                     variant="ghost"
@@ -102,14 +56,14 @@ export function Header() {
                     className="text-xs"
                     onClick={markAllRead}
                   >
-                    Mark all read
+                    Markera alla lästa
                   </Button>
                 )}
               </div>
               <div className="max-h-80 overflow-y-auto">
                 {notifications.length === 0 ? (
                   <div className="p-6 text-center text-muted-foreground">
-                    No notifications
+                    Inga notiser
                   </div>
                 ) : (
                   notifications.map((notification) => (
@@ -120,7 +74,7 @@ export function Header() {
                       }`}
                     >
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
-                        {notification.icon}
+                        {getIcon(notification.type)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground">

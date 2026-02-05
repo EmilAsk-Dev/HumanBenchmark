@@ -43,6 +43,7 @@ builder.Services.AddScoped<Api.Features.Comments.CommentService>();
 builder.Services.AddScoped<MessageService>();
 builder.Services.AddScoped<FriendsService>();
 builder.Services.AddScoped<RealtimeMessageBroadcaster>();
+builder.Services.AddScoped<NotificationSender>();
 builder.Services.AddSingleton<IPresenceTracker, PresenceTracker>();
 builder.Services.AddSingleton<RateLimitState>();
 
