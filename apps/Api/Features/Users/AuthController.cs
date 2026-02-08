@@ -11,13 +11,16 @@ public class AuthController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager)
+        SignInManager<ApplicationUser> signInManager,
+        ILogger<AuthController> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _logger = logger;
     }
 
     public record RegisterRequest(
@@ -35,6 +38,8 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] RegisterRequest req)
     {
+        _logger.LogDebug("Registration attempt for email: {Email}, username: {Username}", req.Email, req.Username);
+
         DateOnly? dateOfBirth = req.DateOfBirth.HasValue
             ? DateOnly.FromDateTime(req.DateOfBirth.Value)
             : null;
@@ -51,6 +56,8 @@ public class AuthController : ControllerBase
         var result = await _userManager.CreateAsync(user, req.Password);
         if (!result.Succeeded)
         {
+            _logger.LogWarning("Registration failed for {Email}: {Errors}",
+                req.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
             return BadRequest(new
             {
                 message = "Registration failed",
@@ -61,6 +68,7 @@ public class AuthController : ControllerBase
 
         await _signInManager.SignInAsync(user, isPersistent: false);
 
+        _logger.LogInformation("User registered successfully: {UserId} ({Email})", user.Id, user.Email);
         return Ok(new
         {
             user.Id,
@@ -74,11 +82,16 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest req)
     {
+        _logger.LogDebug("Login attempt for: {Email}", req.Email);
+
         var user = await _userManager.FindByEmailAsync(req.Email)
                    ?? await _userManager.FindByNameAsync(req.Email);
 
         if (user is null)
+        {
+            _logger.LogWarning("Login failed - user not found: {Email}", req.Email);
             return Unauthorized(new { message = "Invalid credentials" });
+        }
 
         var result = await _signInManager.PasswordSignInAsync(
             user,
@@ -88,7 +101,10 @@ public class AuthController : ControllerBase
         );
 
         if (!result.Succeeded)
+        {
+            _logger.LogWarning("Login failed - invalid password for user: {UserId} ({Email})", user.Id, user.Email);
             return Unauthorized(new { message = "Invalid credentials" });
+        }
 
 
         await _signInManager.SignInAsync(user, isPersistent: false);
@@ -100,6 +116,7 @@ public class AuthController : ControllerBase
             "Login"
         );
 
+        _logger.LogInformation("User logged in: {UserId} ({Email})", user.Id, user.Email);
         return Ok(new
         {
             message = "Logged in",
@@ -112,6 +129,7 @@ public class AuthController : ControllerBase
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
+        _logger.LogInformation("User logged out");
         await _signInManager.SignOutAsync();
         return Ok(new { message = "Logged out" });
     }
@@ -121,8 +139,13 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Me()
     {
         var user = await _userManager.GetUserAsync(User);
-        if (user is null) return Unauthorized();
+        if (user is null)
+        {
+            _logger.LogWarning("Me endpoint called but user not found in token");
+            return Unauthorized();
+        }
 
+        _logger.LogDebug("Me endpoint called for user: {UserId}", user.Id);
         return Ok(new
         {
             user.Id,
