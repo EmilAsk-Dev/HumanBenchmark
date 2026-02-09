@@ -1,4 +1,4 @@
-import { LikeTargetType } from "../types/index.js";
+import { FeedFilter, LikeTargetType } from "../types/index.js";
 import { TestType } from "@/types";
 import type { CreateAttemptRequest, AttemptDto } from "@/types/test";
 import { useNotifications } from "@/contexts/NotificationsContext";
@@ -244,18 +244,28 @@ export const api = {
   },
 
   // Feed
-  async getFeed() {
-    return apiRequest<any[]>(API_CONFIG.ENDPOINTS.FEED);
+  async getFeed(
+    filter: FeedFilter = 'friends',
+    take = 50,
+    skip = 0
+  ) {
+    return apiRequest<any[]>(
+      `${API_CONFIG.ENDPOINTS.FEED}?filter=${filter}&take=${take}&skip=${skip}`
+    );
   },
 
   async getPosts(filter: string = "global") {
     return apiRequest<any[]>(`${API_CONFIG.ENDPOINTS.POSTS}?filter=${filter}`);
   },
 
-  async createPost(attemptId: number, caption?: string) {
+  async createPost(isPublic: boolean, attemptId: number, caption?: string) {
     return apiRequest<any>(API_CONFIG.ENDPOINTS.POSTS, {
       method: "POST",
-      body: JSON.stringify({ attemptId, caption: caption?.trim() || null }),
+      body: JSON.stringify({
+        attemptId,
+        caption: caption?.trim(),
+        isPublic,
+      }),
     });
   },
 

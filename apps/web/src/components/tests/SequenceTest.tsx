@@ -44,7 +44,7 @@ export function SequenceTest({ submitAttempt }: SequenceTestProps) {
   const [mistakes, setMistakes] = useState(0);
   const [result, setResult] = useState<LocalResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-
+  const [isPublic, setIsPublic] = useState(false);
   // ✅ share state
   const [attemptId, setAttemptId] = useState<number | null>(null);
   const [caption, setCaption] = useState("");
@@ -233,10 +233,12 @@ export function SequenceTest({ submitAttempt }: SequenceTestProps) {
     startedAtRef.current = null;
 
     // ✅ reset share state
+
     setAttemptId(null);
     setCaption("");
     setIsSharing(false);
     setShareError(null);
+    setIsPublic(false);
   }, []);
 
   const handleShare = useCallback(async () => {
@@ -245,7 +247,7 @@ export function SequenceTest({ submitAttempt }: SequenceTestProps) {
     setIsSharing(true);
     setShareError(null);
 
-    const { data, error } = await api.createPost(attemptId, caption);
+    const { data, error } = await api.createPost(isPublic, attemptId, caption);
 
     if (error) {
       setShareError(error);
@@ -258,7 +260,7 @@ export function SequenceTest({ submitAttempt }: SequenceTestProps) {
     else navigate("/feed");
 
     setIsSharing(false);
-  }, [attemptId, caption, isSharing, navigate]);
+  }, [attemptId, caption, isSharing, navigate, isPublic]);
 
   if (gameState === "results" && result) {
     return (
@@ -308,7 +310,15 @@ export function SequenceTest({ submitAttempt }: SequenceTestProps) {
             maxLength={140}
             disabled={!attemptId || isSharing}
           />
-
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={isPublic}
+              onChange={(e) => setIsPublic(e.target.checked)}
+              disabled={!attemptId || isSharing}
+            />
+            Share publicly
+          </label>
           <Button
             onClick={handleShare}
             disabled={!attemptId || isSharing}
