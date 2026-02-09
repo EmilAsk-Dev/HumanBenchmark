@@ -7,6 +7,7 @@ export function normalizePost(apiPost: any): Post {
 
     return {
         id: String(apiPost.id),
+        caption: String(apiPost.caption),
         createdAt: apiPost.createdAt,
         isLiked: Boolean(apiPost.isLiked),
         likeCount: Number(apiPost.likeCount ?? 0),
@@ -53,14 +54,13 @@ export function normalizePosts(apiPosts: any[]): Post[] {
 export function buildCommentTree(comments: Comment[]): Comment[] {
     if (!comments?.length) return [];
 
-    // If API already returns nested replies, just return it
     const alreadyNested = comments.some(c => Array.isArray(c.replies) && c.replies.length > 0);
     if (alreadyNested) return comments;
+
 
     const byId = new Map<string, Comment>();
     const roots: Comment[] = [];
 
-    // clone + init replies
     for (const c of comments) {
         byId.set(c.id, { ...c, replies: [] });
     }
@@ -74,7 +74,6 @@ export function buildCommentTree(comments: Comment[]): Comment[] {
 
         const parent = byId.get(parentId);
         if (!parent) {
-            // orphan => treat as root to avoid losing it
             roots.push(c);
             continue;
         }
@@ -82,7 +81,6 @@ export function buildCommentTree(comments: Comment[]): Comment[] {
         parent.replies!.push(c);
     }
 
-    // Optional: sort by time (newest first) for roots + replies
     const sortNewestFirst = (a: Comment, b: Comment) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 

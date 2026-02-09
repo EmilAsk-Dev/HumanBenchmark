@@ -6,6 +6,7 @@ using Api.Features.Comments;
 using Api.Features.Users.Dtos;
 public record FeedItemDto(
     long Id,
+    string? Caption,
     UserDto User,
     TestRunDto TestRun,
     DateTime CreatedAt,

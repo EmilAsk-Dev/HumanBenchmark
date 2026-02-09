@@ -36,6 +36,7 @@ public class FeedService
             .Take(take)
             .Select(p => new FeedItemDto(
                 p.Id,
+                p.Caption,
                 new UserDto(
                     p.User.Id,
                     p.User.UserName!,
@@ -87,6 +88,7 @@ public class FeedService
             .Take(take)
             .Select(p => new FeedItemDto(
                 p.Id,
+                p.Caption,
                 new UserDto(
                     p.User.Id,
                     p.User.UserName!,
@@ -105,6 +107,7 @@ public class FeedService
                 ),
                 p.CreatedAt,
                 p.Likes.Count,
+
                 p.Likes.Any(l => l.UserId == me),
                 p.Comments.Select(c => new CommentDto(
                     c.Id,
@@ -145,6 +148,7 @@ public class FeedService
             .Take(take)
             .Select(p => new FeedItemDto(
                 p.Id,
+                p.Caption,
                 new UserDto(
                     p.User.Id,
                     p.User.UserName!,

@@ -21,6 +21,7 @@ export interface TestRun {
 
 export interface Post {
   id: string;
+  caption: string;
   user: User;
   testRun: TestRun;
   createdAt: string;

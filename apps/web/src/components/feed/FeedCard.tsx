@@ -73,14 +73,13 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
   const avatarSrc = post.user.avatarUrl ?? "/avatars/default.png";
   const displayName = post.user.userName ?? "Unknown";
   const username = post.user.userName ?? "unknown";
+  const caption = post.caption ?? ""
 
-  // ✅ Correct place (based on your debugger screenshot)
   const statistics: any = (post as any).testRun?.statistics;
 
   const statBlocks = useMemo(() => {
     if (!statistics) return null;
 
-    // Reaction
     if (statistics.reaction) {
       const best = statistics.reaction.bestMs;
       const avg = statistics.reaction.avgMs;
@@ -188,7 +187,12 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
             </div>
           </div>
         </div>
-
+        <div className="flex items-center gap-2">
+          <span
+            className="font-semibold text-foreground text-xl leading-snug line-clamp-2"
+          >
+            {caption}
+          </span>        </div>
         {/* Score Display */}
         <motion.div
           className="mb-3 flex items-center justify-between rounded-xl bg-muted/50 p-4"
