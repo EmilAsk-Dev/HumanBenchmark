@@ -1,7 +1,9 @@
 using Api.Data;
 using Api.Domain;
 using Api.Features.Comments;
+using Api.Features.Moderation;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using Xunit;
 
 namespace Api.Tests.Features.Comments;
@@ -15,6 +17,22 @@ public class CommentServiceTests
             .Options;
 
         return new ApplicationDbContext(options);
+    }
+
+    private static Mock<IContentModerationService> CreateAllowingModerationMock()
+    {
+        var mock = new Mock<IContentModerationService>();
+        mock.Setup(m => m.ModerateContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(new ModerationResult(true));
+        return mock;
+    }
+
+    private static Mock<IContentModerationService> CreateRejectingModerationMock(string reason = "Content not allowed")
+    {
+        var mock = new Mock<IContentModerationService>();
+        mock.Setup(m => m.ModerateContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(new ModerationResult(false, reason));
+        return mock;
     }
 
     private async Task<(ApplicationDbContext db, Post post)> SetupPostAsync()
@@ -39,7 +57,7 @@ public class CommentServiceTests
     {
         // Arrange
         var (db, post) = await SetupPostAsync();
-        var service = new CommentService(db);
+        var service = new CommentService(db, CreateAllowingModerationMock().Object);
         var request = new CreateCommentRequest("Great score!", null);
 
         // Act
@@ -59,7 +77,7 @@ public class CommentServiceTests
     {
         // Arrange
         var (db, post) = await SetupPostAsync();
-        var service = new CommentService(db);
+        var service = new CommentService(db, CreateAllowingModerationMock().Object);
         var request = new CreateCommentRequest("", null);
 
         // Act & Assert
@@ -73,7 +91,7 @@ public class CommentServiceTests
     {
         // Arrange
         var (db, post) = await SetupPostAsync();
-        var service = new CommentService(db);
+        var service = new CommentService(db, CreateAllowingModerationMock().Object);
         var request = new CreateCommentRequest(new string('x', 2001), null);
 
         // Act & Assert
@@ -93,7 +111,7 @@ public class CommentServiceTests
         db.Comments.AddRange(comment1, comment2);
         await db.SaveChangesAsync();
 
-        var service = new CommentService(db);
+        var service = new CommentService(db, CreateAllowingModerationMock().Object);
 
         // Act
         var result = await service.GetForPostAsync(post.Id, "user-1", 0, 50);
@@ -118,7 +136,7 @@ public class CommentServiceTests
         }
         await db.SaveChangesAsync();
 
-        var service = new CommentService(db);
+        var service = new CommentService(db, CreateAllowingModerationMock().Object);
 
         // Act
         var result = await service.GetForPostAsync(post.Id, "user-1", 2, 3);
@@ -139,7 +157,7 @@ public class CommentServiceTests
         db.Comments.Add(comment);
         await db.SaveChangesAsync();
 
-        var service = new CommentService(db);
+        var service = new CommentService(db, CreateAllowingModerationMock().Object);
 
         // Act
         var result = await service.DeleteAsync(comment.Id, "user-1");
@@ -161,7 +179,7 @@ public class CommentServiceTests
         db.Comments.Add(comment);
         await db.SaveChangesAsync();
 
-        var service = new CommentService(db);
+        var service = new CommentService(db, CreateAllowingModerationMock().Object);
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.DeleteAsync(comment.Id, "user-2"));
@@ -174,7 +192,7 @@ public class CommentServiceTests
     {
         // Arrange
         var (db, _) = await SetupPostAsync();
-        var service = new CommentService(db);
+        var service = new CommentService(db, CreateAllowingModerationMock().Object);
 
         // Act
         var result = await service.DeleteAsync(999, "user-1");
@@ -195,7 +213,7 @@ public class CommentServiceTests
         db.Comments.Add(parentComment);
         await db.SaveChangesAsync();
 
-        var service = new CommentService(db);
+        var service = new CommentService(db, CreateAllowingModerationMock().Object);
         var request = new CreateCommentRequest("Reply", parentComment.Id);
 
         // Act
@@ -204,6 +222,44 @@ public class CommentServiceTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal(parentComment.Id, result.ParentCommentId);
+
+        db.Dispose();
+    }
+
+    [Fact]
+    public async Task AddAsync_ThrowsModerationException_WhenContentRejected()
+    {
+        // Arrange
+        var (db, post) = await SetupPostAsync();
+        var service = new CommentService(db, CreateRejectingModerationMock("Harassment detected").Object);
+        var request = new CreateCommentRequest("You suck!", null);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<ModerationException>(() => service.AddAsync(post.Id, "user-1", request));
+        Assert.Equal("Harassment detected", ex.Reason);
+
+        // Verify comment was NOT created
+        Assert.Empty(db.Comments);
+
+        db.Dispose();
+    }
+
+    [Fact]
+    public async Task AddAsync_CallsModeration_WithCorrectParameters()
+    {
+        // Arrange
+        var (db, post) = await SetupPostAsync();
+        var moderationMock = CreateAllowingModerationMock();
+        var service = new CommentService(db, moderationMock.Object);
+        var request = new CreateCommentRequest("Nice work!", null);
+
+        // Act
+        await service.AddAsync(post.Id, "user-1", request);
+
+        // Assert - moderation was called with correct user, content, and type
+        moderationMock.Verify(
+            m => m.ModerateContentAsync("user-1", "Nice work!", "Comment"),
+            Times.Once);
 
         db.Dispose();
     }
