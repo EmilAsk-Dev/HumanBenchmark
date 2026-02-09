@@ -6,6 +6,8 @@ public class Post
 {
     public long Id { get; set; }
 
+    public bool IsPublic { get; set; } = false;
+
     public long AttemptId { get; set; }
     public Attempt Attempt { get; set; } = default!;
 

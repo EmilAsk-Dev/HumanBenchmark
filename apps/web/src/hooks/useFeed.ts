@@ -52,7 +52,7 @@ export function useFeed() {
     setIsLoading(true);
     setError(null);
 
-    const { data, error: apiError } = await api.getFeed();
+    const { data, error: apiError } = await api.getFeed(feedFilter);
 
     if (apiError) {
       setError(apiError);
@@ -72,7 +72,7 @@ export function useFeed() {
   const refreshFeed = useCallback(async () => {
     setIsRefreshing(true);
 
-    const { data, error: apiError } = await api.getFeed();
+    const { data, error: apiError } = await api.getFeed(filter);
     if (!apiError) setPosts(normalizePosts(data ?? []));
 
     setIsRefreshing(false);

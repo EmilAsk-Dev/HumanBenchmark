@@ -33,7 +33,7 @@ export function TypingTest({ submitAttempt }: TypingTestProps) {
   const [countdown, setCountdown] = useState(3);
   const [result, setResult] = useState<LocalResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-
+  const [isPublic, setIsPublic] = useState(false);
   // ✅ share state
   const [attemptId, setAttemptId] = useState<number | null>(null);
   const [caption, setCaption] = useState("");
@@ -226,6 +226,8 @@ export function TypingTest({ submitAttempt }: TypingTestProps) {
     setCaption("");
     setIsSharing(false);
     setShareError(null);
+    setIsPublic(false);
+
 
     prevTypedLengthRef.current = 0;
   }, []);
@@ -237,7 +239,7 @@ export function TypingTest({ submitAttempt }: TypingTestProps) {
     setShareError(null);
 
     // expects api.createPost(attemptId, caption) -> PostDto (or {post:{...}})
-    const { data, error } = await api.createPost(attemptId, caption);
+    const { data, error } = await api.createPost(isPublic, attemptId, caption);
 
     if (error) {
       try {
@@ -255,7 +257,7 @@ export function TypingTest({ submitAttempt }: TypingTestProps) {
     else navigate("/feed");
 
     setIsSharing(false);
-  }, [attemptId, caption, isSharing, navigate]);
+  }, [attemptId, caption, isSharing, navigate, isPublic]);
 
   if (gameState === "results" && result) {
     const accuracy = calculateAccuracy(typed, text);
@@ -304,6 +306,16 @@ export function TypingTest({ submitAttempt }: TypingTestProps) {
             maxLength={140}
             disabled={!attemptId || isSharing}
           />
+
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={isPublic}
+              onChange={(e) => setIsPublic(e.target.checked)}
+              disabled={!attemptId || isSharing}
+            />
+            Share publicly
+          </label>
 
           <Button
             onClick={handleShare}

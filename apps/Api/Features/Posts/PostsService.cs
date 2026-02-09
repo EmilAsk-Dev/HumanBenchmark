@@ -48,7 +48,8 @@ public class PostsService
             AttemptId = request.AttemptId,
             UserId = userId,
             Caption = request.Caption,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            IsPublic = request.IsPublic
         };
 
         _db.Posts.Add(post);

@@ -21,7 +21,10 @@ public class FeedController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<FeedItemDto>>> Get([FromQuery] int take = 50, [FromQuery] int skip = 0)
+    public async Task<ActionResult<List<FeedItemDto>>> Get(
+    [FromQuery] int take = 50,
+    [FromQuery] int skip = 0,
+    [FromQuery] FeedFilter filter = FeedFilter.Friends)
     {
         var me = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(me))
@@ -30,8 +33,30 @@ public class FeedController : ControllerBase
             return Unauthorized();
         }
 
-        _logger.LogDebug("GetFeed for user {UserId} - take: {Take}, skip: {Skip}", me, take, skip);
-        var items = await _svc.GetFriendsFeedAsync(me, new FeedRequest(take, skip));
-        return Ok(items);
+        _logger.LogDebug(
+            "GetFeed for user {UserId} - filter: {Filter}, take: {Take}, skip: {Skip}",
+            me, filter, take, skip
+        );
+
+        return filter switch
+        {
+            FeedFilter.Friends =>
+                Ok(await _svc.GetFriendsFeedAsync(me, new FeedRequest(take, skip))),
+
+            FeedFilter.Global =>
+                Ok(await _svc.GetPublicFeedAsync(me, new FeedRequest(take, skip))),
+
+            FeedFilter.Trending =>
+                Ok(await _svc.GetTrendingFeedAsync(me, new FeedRequest(take, skip))),
+
+            _ => BadRequest("Invalid feed filter")
+        };
     }
+}
+
+public enum FeedFilter
+{
+    Friends,
+    Global,
+    Trending
 }

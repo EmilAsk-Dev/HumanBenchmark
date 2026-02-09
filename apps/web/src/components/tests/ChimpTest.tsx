@@ -40,6 +40,7 @@ export function ChimpTest({ submitAttempt }: ChimpTestProps) {
   const [attemptId, setAttemptId] = useState<number | null>(null);
   const [caption, setCaption] = useState("");
   const [isSharing, setIsSharing] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
 
   const isMountedRef = useRef(true);
@@ -211,6 +212,7 @@ export function ChimpTest({ submitAttempt }: ChimpTestProps) {
     setCaption("");
     setIsSharing(false);
     setShareError(null);
+    setIsPublic(false);
 
     testStartRef.current = null;
   }, []);
@@ -230,7 +232,7 @@ export function ChimpTest({ submitAttempt }: ChimpTestProps) {
     setCaption("");
     setIsSharing(false);
     setShareError(null);
-
+    setIsPublic(false);
     testStartRef.current = Date.now();
     startLevel(startingLevel);
   }, [startLevel]);
@@ -241,7 +243,7 @@ export function ChimpTest({ submitAttempt }: ChimpTestProps) {
     setIsSharing(true);
     setShareError(null);
 
-    const { data, error } = await api.createPost(attemptId, caption);
+    const { data, error } = await api.createPost(isPublic, attemptId, caption);
 
     if (error) {
       try {
@@ -259,7 +261,7 @@ export function ChimpTest({ submitAttempt }: ChimpTestProps) {
     else navigate("/feed");
 
     setIsSharing(false);
-  }, [attemptId, caption, isSharing, navigate]);
+  }, [attemptId, caption, isSharing, navigate, isPublic]);
 
   if (gameState === "results" && finalScore !== null) {
     return (
@@ -305,6 +307,17 @@ export function ChimpTest({ submitAttempt }: ChimpTestProps) {
             maxLength={140}
             disabled={!attemptId || isSharing}
           />
+
+          {/* ✅ Public / Private toggle */}
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={isPublic}
+              onChange={(e) => setIsPublic(e.target.checked)}
+              disabled={!attemptId || isSharing}
+            />
+            Share publicly
+          </label>
 
           <Button
             onClick={handleShare}

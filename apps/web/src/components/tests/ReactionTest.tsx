@@ -35,6 +35,7 @@ export function ReactionTest({ submitAttempt }: ReactionTestProps) {
   const [currentRound, setCurrentRound] = useState(0);
   const [result, setResult] = useState<LocalResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
 
   // ✅ share state
   const [attemptId, setAttemptId] = useState<number | null>(null);
@@ -233,6 +234,7 @@ export function ReactionTest({ submitAttempt }: ReactionTestProps) {
     setCaption("");
     setIsSharing(false);
     setShareError(null);
+    setIsPublic(false);
   }, [clearGameTimeout]);
 
   const handleShare = useCallback(async () => {
@@ -241,7 +243,7 @@ export function ReactionTest({ submitAttempt }: ReactionTestProps) {
     setIsSharing(true);
     setShareError(null);
 
-    const { data, error } = await api.createPost(attemptId, caption);
+    const { data, error } = await api.createPost(isPublic, attemptId, caption);
 
     if (error) {
       try {
@@ -259,7 +261,7 @@ export function ReactionTest({ submitAttempt }: ReactionTestProps) {
     else navigate("/feed");
 
     setIsSharing(false);
-  }, [attemptId, caption, isSharing, navigate]);
+  }, [attemptId, caption, isSharing, navigate, isPublic]);
 
   const getBackgroundColor = () => {
     switch (gameState) {
@@ -331,6 +333,16 @@ export function ReactionTest({ submitAttempt }: ReactionTestProps) {
             maxLength={140}
             disabled={!attemptId || isSharing}
           />
+
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={isPublic}
+              onChange={(e) => setIsPublic(e.target.checked)}
+              disabled={!attemptId || isSharing}
+            />
+            Share publicly
+          </label>
 
           <Button
             onClick={handleShare}
