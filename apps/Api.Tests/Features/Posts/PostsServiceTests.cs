@@ -42,7 +42,7 @@ public class PostsServiceTests
         // Arrange
         using var db = CreateInMemoryDbContext();
         var service = new PostsService(db, CreateAllowingModerationMock().Object);
-        var request = new CreatePostRequest(999, "Test caption");
+        var request = new CreatePostRequest(999, "Test caption", true);
 
         // Act
         var result = await service.CreatePostAsync("user-1", request);
@@ -64,7 +64,7 @@ public class PostsServiceTests
         await db.SaveChangesAsync();
 
         var service = new PostsService(db, CreateAllowingModerationMock().Object);
-        var request = new CreatePostRequest(attempt.Id, "Test caption");
+        var request = new CreatePostRequest(attempt.Id, "Test caption", true);
 
         // Act - different user trying to post
         var result = await service.CreatePostAsync("user-2", request);
@@ -86,7 +86,7 @@ public class PostsServiceTests
         await db.SaveChangesAsync();
 
         var service = new PostsService(db, CreateAllowingModerationMock().Object);
-        var request = new CreatePostRequest(attempt.Id, "My best score!");
+        var request = new CreatePostRequest(attempt.Id, "My best score!", true);
 
         // Act
         var result = await service.CreatePostAsync("user-1", request);
@@ -112,7 +112,7 @@ public class PostsServiceTests
         await db.SaveChangesAsync();
 
         var service = new PostsService(db, CreateAllowingModerationMock().Object);
-        var request = new CreatePostRequest(attempt.Id, "First post");
+        var request = new CreatePostRequest(attempt.Id, "First post", true);
 
         // Create first post
         await service.CreatePostAsync("user-1", request);
@@ -179,7 +179,7 @@ public class PostsServiceTests
         await db.SaveChangesAsync();
 
         var service = new PostsService(db, CreateAllowingModerationMock().Object);
-        var request = new CreatePostRequest(attempt.Id, null);
+        var request = new CreatePostRequest(attempt.Id, null, true);
 
         // Act
         var result = await service.CreatePostAsync("user-1", request);
@@ -202,7 +202,7 @@ public class PostsServiceTests
         await db.SaveChangesAsync();
 
         var service = new PostsService(db, CreateAllowingModerationMock().Object);
-        var request = new CreatePostRequest(attempt.Id, null);
+        var request = new CreatePostRequest(attempt.Id, null, true);
 
         // Act
         var result = await service.CreatePostAsync("user-1", request);
@@ -225,7 +225,7 @@ public class PostsServiceTests
         await db.SaveChangesAsync();
 
         var service = new PostsService(db, CreateRejectingModerationMock("Contains hate speech").Object);
-        var request = new CreatePostRequest(attempt.Id, "Some hateful content");
+        var request = new CreatePostRequest(attempt.Id, "Some hateful content", true);
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<ModerationException>(() => service.CreatePostAsync("user-1", request));
@@ -249,7 +249,7 @@ public class PostsServiceTests
 
         var moderationMock = CreateRejectingModerationMock();
         var service = new PostsService(db, moderationMock.Object);
-        var request = new CreatePostRequest(attempt.Id, null);
+        var request = new CreatePostRequest(attempt.Id, null, false);
 
         // Act
         var result = await service.CreatePostAsync("user-1", request);
@@ -275,7 +275,7 @@ public class PostsServiceTests
 
         var moderationMock = CreateAllowingModerationMock();
         var service = new PostsService(db, moderationMock.Object);
-        var request = new CreatePostRequest(attempt.Id, "Nice score!");
+        var request = new CreatePostRequest(attempt.Id, "Nice score!", false);
 
         // Act
         await service.CreatePostAsync("user-1", request);
