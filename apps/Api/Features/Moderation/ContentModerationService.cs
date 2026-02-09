@@ -40,7 +40,8 @@ public class ContentModerationService : IContentModerationService
         try
         {
             var systemPrompt = """
-                You are a content moderator. Analyze the following text and determine if it is appropriate for a public social platform.
+                You are a multilingual content moderator. Analyze the following text in ANY language and determine if it is appropriate for a public social platform.
+                You MUST detect and moderate content regardless of the language it is written in (e.g. English, Swedish, Spanish, Arabic, Chinese, etc.).
 
                 Reject content that contains:
                 - Hate speech or discrimination
@@ -54,7 +55,7 @@ public class ContentModerationService : IContentModerationService
                 Respond ONLY with valid JSON in this exact format:
                 {"allowed": true}
                 or
-                {"allowed": false, "reason": "brief explanation"}
+                {"allowed": false, "reason": "brief explanation in English"}
                 """;
 
             var response = await _chatClient.CompleteChatAsync(
