@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { Heart, MessageCircle, Play } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -69,11 +69,13 @@ function StatPill({ label, value }: { label: string; value: React.ReactNode }) {
 export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProps) {
   const config = TEST_CONFIGS[post.testRun.testType] ?? TEST_CONFIGS.reaction;
   const [isCommentSheetOpen, setIsCommentSheetOpen] = useState(false);
+  const [captionExpanded, setCaptionExpanded] = useState(false);
 
   const avatarSrc = post.user.avatarUrl ?? "/avatars/default.png";
   const displayName = post.user.userName ?? "Unknown";
   const username = post.user.userName ?? "unknown";
-  const caption = post.caption ?? ""
+  const caption = (post.caption ?? "").trim();
+  const captionIsLong = caption.length > 120;
 
   const statistics: any = (post as any).testRun?.statistics;
 
@@ -161,10 +163,10 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.05, duration: 0.3 }}
-        className="border-b border-border bg-card p-4 transition-colors hover:bg-accent/50"
+        className="rounded-2xl border border-border bg-card/70 p-5 shadow-sm transition-colors hover:bg-card"
       >
         {/* Header */}
-        <div className="mb-3 flex items-center gap-3">
+        <div className="mb-4 flex items-center gap-3">
           <motion.img
             src={avatarSrc}
             alt={displayName}
@@ -187,15 +189,38 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span
-            className="font-semibold text-foreground text-xl leading-snug line-clamp-2"
-          >
-            {caption}
-          </span>        </div>
+
+        {caption && (
+          <div className="mb-4">
+            <p
+              className="text-lg font-semibold leading-snug text-foreground"
+              style={
+                captionExpanded
+                  ? undefined
+                  : ({
+                      display: "-webkit-box",
+                      WebkitBoxOrient: "vertical",
+                      WebkitLineClamp: 2,
+                      overflow: "hidden",
+                    } as CSSProperties)
+              }
+            >
+              {caption}
+            </p>
+            {captionIsLong && (
+              <button
+                type="button"
+                onClick={() => setCaptionExpanded((v) => !v)}
+                className="mt-1 text-sm text-primary hover:underline"
+              >
+                {captionExpanded ? "Show less" : "Show more"}
+              </button>
+            )}
+          </div>
+        )}
         {/* Score Display */}
         <motion.div
-          className="mb-3 flex items-center justify-between rounded-xl bg-muted/50 p-4"
+          className="mb-4 flex items-center justify-between rounded-xl bg-muted/50 p-4"
           whileHover={{ scale: 1.01 }}
           transition={{ type: "spring", stiffness: 400 }}
         >
@@ -240,7 +265,7 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
         )}
 
         {/* Actions */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-t border-border/60 pt-3">
           <div className="flex items-center gap-4">
             <motion.button
               onClick={() => onLike(post.id, LikeTargetType.Post)}

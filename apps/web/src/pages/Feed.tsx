@@ -1,5 +1,4 @@
-// Feed.tsx
-import { useMemo, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { FeedCard } from "@/components/feed/FeedCard";
 import { FeedFilters } from "@/components/feed/FeedFilters";
@@ -25,37 +24,46 @@ export default function Feed() {
     try {
       localStorage.setItem("feed:hideMyPosts", hideMyPosts ? "1" : "0");
     } catch {
-
+      // ignore
     }
   }, [hideMyPosts]);
 
   const visiblePosts = useMemo(() => {
     if (!hideMyPosts) return posts;
     if (!user?.id) return posts;
-    return posts.filter(p => p.user?.id !== user.id);
+    return posts.filter((p) => p.user?.id !== user.id);
   }, [posts, hideMyPosts, user?.id]);
 
   return (
     <AppLayout>
-      {dailyTest && <DailyTestBanner dailyTest={dailyTest} />}
+      {/* Side padding only (no max-width container) */}
+      <div className="w-full px-4 sm:px-6">
+        {dailyTest && (
+          <div className="pt-4">
+            <DailyTestBanner dailyTest={dailyTest} />
+          </div>
+        )}
 
-      <FeedFilters
-        currentFilter={filter}
-        onFilterChange={setFilter}
-        hideMyPosts={hideMyPosts}
-        onHideMyPostsChange={setHideMyPosts}
-      />
-
-      <div className="divide-y divide-border">
-        {visiblePosts.map((post, index) => (
-          <FeedCard
-            key={post.id}
-            post={post}
-            onLike={likeTarget}
-            onAddComment={addComment}
-            index={index}
+        <div className="pt-4">
+          <FeedFilters
+            currentFilter={filter}
+            onFilterChange={setFilter}
+            hideMyPosts={hideMyPosts}
+            onHideMyPostsChange={setHideMyPosts}
           />
-        ))}
+        </div>
+
+        <div className="space-y-4 pb-10 pt-4">
+          {visiblePosts.map((post, index) => (
+            <FeedCard
+              key={post.id}
+              post={post}
+              onLike={likeTarget}
+              onAddComment={addComment}
+              index={index}
+            />
+          ))}
+        </div>
       </div>
     </AppLayout>
   );

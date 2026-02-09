@@ -23,8 +23,8 @@ export function FeedFilters({
   onHideMyPostsChange,
 }: FeedFiltersProps) {
   return (
-    <div className="flex flex-col gap-3 p-4 border-b border-border bg-background">
-      <div className="flex gap-2">
+    <div className="rounded-2xl border border-border bg-card/60 p-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/40">
+      <div className="flex flex-wrap items-center gap-2">
         {filters.map(({ value, label }) => (
           <button
             key={value}
@@ -40,17 +40,16 @@ export function FeedFilters({
           </button>
         ))}
 
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <label className="ml-auto flex w-full items-center gap-2 text-sm text-muted-foreground sm:w-auto">
           <input
             type="checkbox"
             checked={hideMyPosts}
             onChange={(e) => onHideMyPostsChange(e.target.checked)}
+            className="h-4 w-4 accent-primary"
           />
           Don’t show my posts
         </label>
       </div>
-
-
     </div>
   );
 }
