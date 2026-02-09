@@ -11,6 +11,7 @@ import Tests from "./pages/Tests";
 import Leaderboards from "./pages/Leaderboards";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
+import Privacy from "./pages/Privacy";
 import ReactionPage from "./pages/tests/ReactionPage";
 import ChimpPage from "./pages/tests/ChimpPage";
 import TypingPage from "./pages/tests/TypingPage";
@@ -58,6 +59,9 @@ const App = () => (
                   </PublicOnlyRoute>
                 }
               />
+
+              <Route path="/privacy" element={<Privacy />} />
+
               <Route
                 path="/friends"
                 element={

@@ -124,6 +124,17 @@ app.UseRequestLogging();
 
 if (!app.Environment.IsDevelopment())
 {
+    app.Use((context, next) =>
+    {
+        var headers = context.Response.Headers;
+        headers["X-Content-Type-Options"] = "nosniff";
+        headers["Referrer-Policy"] = "no-referrer";
+        headers["X-Frame-Options"] = "DENY";
+        headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
+
+        return next();
+    });
+
     app.UseHsts();
     app.UseHttpsRedirection();
 }
@@ -133,12 +144,16 @@ app.UseAuthorization();
 
 app.UseRateLimiter();
 
-app.MapGet("/debug", () => Results.Ok(new
+if (app.Environment.IsDevelopment())
 {
-    ok = true,
-    env = app.Environment.EnvironmentName,
-    urls = app.Urls.ToArray()
-}));
+    app.MapGet("/debug", () => Results.Ok(new
+    {
+        ok = true,
+        env = app.Environment.EnvironmentName,
+        urls = app.Urls.ToArray()
+    }))
+        .RequireRateLimiting("fixed");
+}
 
 app.MapIdentityApi<ApplicationUser>().RequireRateLimiting("fixed");
 app.MapControllers().RequireRateLimiting("fixed");
