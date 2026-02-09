@@ -56,6 +56,10 @@ var connectionString =
     Environment.GetEnvironmentVariable("CONNECTION_STRING")
     ?? Environment.GetEnvironmentVariable("SQLCONNSTR_CONNECTION_STRING");
 
+var apiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY");
+if (string.IsNullOrWhiteSpace(apiKey))
+    Console.WriteLine("Warning: AZURE_OPENAI_API_KEY is not set. Content moderation will not work.");
+
 if (string.IsNullOrWhiteSpace(connectionString))
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
