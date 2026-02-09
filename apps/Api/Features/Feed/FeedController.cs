@@ -12,10 +12,12 @@ namespace Api.Features.Feed;
 public class FeedController : ControllerBase
 {
     private readonly FeedService _svc;
+    private readonly ILogger<FeedController> _logger;
 
-    public FeedController(FeedService svc)
+    public FeedController(FeedService svc, ILogger<FeedController> logger)
     {
         _svc = svc;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -23,8 +25,12 @@ public class FeedController : ControllerBase
     {
         var me = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(me))
+        {
+            _logger.LogWarning("Unauthorized feed access - no user ID in token");
             return Unauthorized();
+        }
 
+        _logger.LogDebug("GetFeed for user {UserId} - take: {Take}, skip: {Skip}", me, take, skip);
         var items = await _svc.GetFriendsFeedAsync(me, new FeedRequest(take, skip));
         return Ok(items);
     }
