@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff, ArrowRight, CalendarIcon } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, CalendarIcon, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -399,6 +401,36 @@ export default function Login() {
                 </Button>
               </motion.div>
             </form>
+
+            <Alert className="mt-4 bg-muted/30">
+              <Info className="h-4 w-4" />
+              <div>
+                <AlertTitle>Integritet</AlertTitle>
+                <AlertDescription>
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="privacy" className="border-0">
+                      <AccordionTrigger className="py-1 text-sm">
+                        Vilken data lagrar vi?
+                      </AccordionTrigger>
+                      <AccordionContent className="pb-0">
+                        <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                          <li>E-post (för inloggning)</li>
+                          <li>Användarnamn + avatar</li>
+                          <li>Födelsedatum och kön (valbart i profilen)</li>
+                          <li>Testresultat/statistik</li>
+                          <li>Inlägg, kommentarer och likes</li>
+                          <li>Vänner och meddelanden (om du använder funktionerna)</li>
+                        </ul>
+                        <p className="mt-2 text-muted-foreground">
+                          Vi använder även en sessions-cookie för att hålla dig inloggad. Läs mer på{" "}
+                          <Link to="/privacy" className="text-primary hover:underline">/privacy</Link>.
+                        </p>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </AlertDescription>
+              </div>
+            </Alert>
 
             {mode === 'login' && (
               <motion.p
