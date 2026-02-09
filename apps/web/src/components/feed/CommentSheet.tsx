@@ -12,7 +12,7 @@ interface CommentSheetProps {
   isOpen: boolean;
   onClose: () => void;
   comments: Comment[];
-  onAddComment: (content: string, parentCommentId?: string) => void;
+  onAddComment: (content: string, parentCommentId?: string) => Promise<{ error?: string | null }>;
   postId: string;
   onLike: (targetId: string, targetType: LikeTargetType) => void;
 }
@@ -109,6 +109,8 @@ export function CommentSheet({
 }: CommentSheetProps) {
   const [newComment, setNewComment] = useState("");
   const [replyingTo, setReplyingTo] = useState<{ id: string; username: string } | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -135,11 +137,11 @@ export function CommentSheet({
     setNewComment("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const trimmed = newComment.trim();
-    if (!trimmed) return;
+    if (!trimmed || isSubmitting) return;
 
     const content = replyingTo
       ? stripLeadingMention(trimmed, replyingTo.username).trim()
@@ -147,10 +149,25 @@ export function CommentSheet({
 
     if (!content) return;
 
-    onAddComment(content, replyingTo?.id);
+    setIsSubmitting(true);
+    setErrorMsg(null);
+
+    const { error: submitError } = await onAddComment(content, replyingTo?.id);
+
+    if (submitError) {
+      try {
+        const parsed = JSON.parse(submitError);
+        setErrorMsg(parsed.reason ?? parsed.error ?? submitError);
+      } catch {
+        setErrorMsg(submitError);
+      }
+      setIsSubmitting(false);
+      return;
+    }
 
     setNewComment("");
     setReplyingTo(null);
+    setIsSubmitting(false);
   };
 
   const totalCount = countCommentsTree(comments ?? []);
@@ -205,7 +222,19 @@ export function CommentSheet({
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-border p-4 bg-background">
+        <div className="relative border-t border-border p-4 bg-background">
+          <AnimatePresence>
+            {errorMsg && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute bottom-full left-4 right-4 mb-1 px-3 py-2 rounded-lg bg-destructive/10 text-destructive text-sm shadow-sm"
+              >
+                {errorMsg}
+              </motion.div>
+            )}
+          </AnimatePresence>
           <AnimatePresence>
             {replyingTo && (
               <motion.div
@@ -240,10 +269,14 @@ export function CommentSheet({
               <Button
                 type="submit"
                 size="icon"
-                disabled={!newComment.trim()}
+                disabled={!newComment.trim() || isSubmitting}
                 className="rounded-full gradient-primary text-primary-foreground"
               >
-                <Send className="h-4 w-4" />
+                {isSubmitting ? (
+                  <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
               </Button>
             </motion.div>
           </form>

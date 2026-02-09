@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 interface FeedCardProps {
   post: Post;
   onLike: (targetId: string, targetType: LikeTargetType) => void;
-  onAddComment?: (postId: string, content: string, parentCommentId?: string) => void;
+  onAddComment?: (postId: string, content: string, parentCommentId?: string) => Promise<{ error?: string | null }>;
   index?: number;
 }
 
@@ -279,7 +279,10 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
         comments={post.comments ?? []}
         postId={post.id}
         onLike={onLike}
-        onAddComment={(content, parentId) => onAddComment?.(post.id, content, parentId)}
+        onAddComment={async (content, parentId) => {
+          const result = await onAddComment?.(post.id, content, parentId);
+          return { error: result?.error ?? null };
+        }}
       />
     </>
   );
