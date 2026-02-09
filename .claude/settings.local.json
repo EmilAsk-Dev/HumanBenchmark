@@ -4,7 +4,9 @@
       "Bash(git checkout:*)",
       "Bash(dotnet build:*)",
       "Bash(git add:*)",
-      "Bash(git stash:*)"
+      "Bash(dotnet run:*)",
+      "Bash(dotnet ef database:*)",
+      "Bash(dotnet ef migrations add:*)"
     ]
   }
 }

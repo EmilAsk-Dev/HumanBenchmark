@@ -1,5 +1,6 @@
 using Api.Data;
 using Api.Domain;
+using Api.Features.Moderation;
 using Api.Features.Posts.Dtos;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,10 +9,12 @@ namespace Api.Features.Posts;
 public class PostsService
 {
     private readonly ApplicationDbContext _db;
+    private readonly IContentModerationService _moderationService;
 
-    public PostsService(ApplicationDbContext db)
+    public PostsService(ApplicationDbContext db, IContentModerationService moderationService)
     {
         _db = db;
+        _moderationService = moderationService;
     }
 
     public async Task<PostDto?> CreatePostAsync(string userId, CreatePostRequest request)
@@ -32,6 +35,13 @@ public class PostsService
         var existingPost = await _db.Posts.AnyAsync(p => p.AttemptId == request.AttemptId);
         if (existingPost)
             return null;
+
+        if (!string.IsNullOrWhiteSpace(request.Caption))
+        {
+            var moderationResult = await _moderationService.ModerateContentAsync(userId, request.Caption, "Post");
+            if (!moderationResult.IsAllowed)
+                throw new ModerationException(moderationResult.Reason ?? "Content not allowed");
+        }
 
         var post = new Post
         {

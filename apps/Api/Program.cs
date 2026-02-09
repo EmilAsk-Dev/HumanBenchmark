@@ -12,6 +12,7 @@ using Scalar.AspNetCore;
 using System.Threading.RateLimiting;
 using Api.Features.Messages;
 using Api.Features.Friends;
+using Api.Features.Moderation;
 using Api.hubs;
 using Api.Features.WebSocket;
 
@@ -47,6 +48,7 @@ builder.Services.AddScoped<FriendsService>();
 builder.Services.AddScoped<RealtimeMessageBroadcaster>();
 builder.Services.AddScoped<NotificationSender>();
 builder.Services.AddSingleton<IPresenceTracker, PresenceTracker>();
+builder.Services.AddScoped<IContentModerationService, ContentModerationService>();
 
 builder.Services.AddSignalR();
 

@@ -1,3 +1,4 @@
+using Api.Features.Moderation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -34,17 +35,16 @@ public class CommentsController : ControllerBase
     [Tags("Comments")]
     public async Task<ActionResult<CommentDto>> Add(long postId, [FromBody] CreateCommentRequest req)
     {
-        _logger.LogDebug("Add comment to post {PostId}", postId);
-
-        var created = await _comments.AddAsync(postId, Me, req);
-        if (created is null)
+        try
         {
-            _logger.LogWarning("Failed to add comment - post {PostId} not found", postId);
-            return NotFound();
+            var created = await _comments.AddAsync(postId, Me, req);
+            if (created is null) return NotFound();
+            return Ok(created);
         }
-
-        _logger.LogInformation("User {UserId} added comment {CommentId} to post {PostId}", Me, created.Id, postId);
-        return Ok(created);
+        catch (ModerationException ex)
+        {
+            return BadRequest(new { error = "Content rejected by moderation", reason = ex.Reason });
+        }
     }
 
     [HttpDelete("api/posts/{postId}/comments/{commentId}")]

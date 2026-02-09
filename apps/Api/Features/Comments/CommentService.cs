@@ -1,16 +1,20 @@
 using Api.Data;
 using Api.Domain;
+using Api.Features.Moderation;
 using Microsoft.EntityFrameworkCore;
 using Api.Features.Users.Dtos;
+
 namespace Api.Features.Comments;
 
 public class CommentService
 {
     private readonly ApplicationDbContext _db;
+    private readonly IContentModerationService _moderationService;
 
-    public CommentService(ApplicationDbContext db)
+    public CommentService(ApplicationDbContext db, IContentModerationService moderationService)
     {
         _db = db;
+        _moderationService = moderationService;
     }
 
     public async Task<List<CommentDto>> GetForPostAsync(long postId, string me, int skip, int take)
@@ -62,6 +66,10 @@ public class CommentService
 
             parentId = parent.Id;
         }
+
+        var moderationResult = await _moderationService.ModerateContentAsync(me, content, "Comment");
+        if (!moderationResult.IsAllowed)
+            throw new ModerationException(moderationResult.Reason ?? "Content not allowed");
 
         var comment = new Comment
         {

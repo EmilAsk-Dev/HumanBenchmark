@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Api.Domain;
 using Api.Domain.Friends;
 using Api.Domain.Message;
+using Api.Domain.Moderation;
 
 namespace Api.Data;
 
@@ -27,6 +28,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<Message> Messages => Set<Message>();
+    public DbSet<FlaggedContent> FlaggedContent => Set<FlaggedContent>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
@@ -200,6 +203,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             e.HasIndex(x => new { x.ConversationId, x.SentAt });
             e.Property(x => x.Content).HasMaxLength(2000);
+        });
+
+        b.Entity<FlaggedContent>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).HasMaxLength(450).IsRequired();
+            e.Property(x => x.ContentType).HasMaxLength(50).IsRequired();
+            e.Property(x => x.Content).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.Reason).HasMaxLength(500).IsRequired();
+            e.HasIndex(x => new { x.Reviewed, x.FlaggedAt });
         });
     }
 }

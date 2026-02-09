@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Api.Features.Moderation;
 using Api.Features.Posts.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -32,16 +33,19 @@ public class PostsController : ControllerBase
             return Unauthorized();
         }
 
-        var post = await _svc.CreatePostAsync(userId, request);
-
-        if (post == null)
+        try
         {
-            _logger.LogWarning("CreatePost failed for user {UserId} - attempt not found or already posted", userId);
-            return BadRequest("Unable to create post. Attempt not found or already posted.");
-        }
+            var post = await _svc.CreatePostAsync(userId, request);
 
-        _logger.LogInformation("User {UserId} created post {PostId}", userId, post.Id);
-        return Ok(post);
+            if (post == null)
+                return BadRequest("Unable to create post. Attempt not found or already posted.");
+
+            return Ok(post);
+        }
+        catch (ModerationException ex)
+        {
+            return BadRequest(new { error = "Content rejected by moderation", reason = ex.Reason });
+        }
     }
 
     [HttpGet("{postId}")]

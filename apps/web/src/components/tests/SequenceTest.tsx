@@ -248,7 +248,12 @@ export function SequenceTest({ submitAttempt }: SequenceTestProps) {
     const { data, error } = await api.createPost(attemptId, caption);
 
     if (error) {
-      setShareError(error);
+      try {
+        const parsed = JSON.parse(error);
+        setShareError(parsed.reason ?? parsed.error ?? error);
+      } catch {
+        setShareError(error);
+      }
       setIsSharing(false);
       return;
     }
@@ -299,7 +304,11 @@ export function SequenceTest({ submitAttempt }: SequenceTestProps) {
 
         {/* ✅ Share as post */}
         <div className="w-full max-w-sm space-y-2 mb-6">
-          {shareError && <p className="text-sm text-destructive">Error: {shareError}</p>}
+          {shareError && (
+            <div className="px-3 py-2 rounded-lg bg-destructive/10 text-destructive text-sm">
+              {shareError}
+            </div>
+          )}
 
           <Input
             value={caption}
