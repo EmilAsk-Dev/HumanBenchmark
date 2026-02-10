@@ -72,6 +72,7 @@ steps:
     node -v
     npm -v
     npm ci
+    npm audit --audit-level=high
     npm run build
   displayName: "Build Web"
 
@@ -91,7 +92,30 @@ steps:
   inputs:
     command: "restore"
     projects: "$(apiProject)"
-    arguments: "-r linux-x64"
+    arguments: "-r linux-x64 --locked-mode"
+
+# ============================
+# Dependency/SCA checks
+# ============================
+- script: |
+    set -e
+    echo "Checking NuGet vulnerabilities..."
+    OUT="$(dotnet list "$(apiProject)" package --vulnerable --include-transitive)"
+    echo "$OUT"
+    if printf '%s\n' "$OUT" | grep -Fq "has the following vulnerable packages"; then
+      echo "NuGet vulnerabilities found"
+      exit 1
+    fi
+  displayName: "SCA: check NuGet vulnerabilities"
+
+- script: |
+    set -e
+    echo "Verifying NuGet lock file is committed..."
+    test -f "apps/Api/packages.lock.json" || (echo "Missing apps/Api/packages.lock.json"; exit 1)
+
+    # Fail if restore changed the lock file
+    git diff --exit-code -- "apps/Api/packages.lock.json"
+  displayName: "SCA: verify NuGet lock file unchanged"
 
 # ============================
 # Run API Tests
