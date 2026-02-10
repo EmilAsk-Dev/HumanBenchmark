@@ -82,7 +82,7 @@ export type CreatePostRequest = {
 
 
 
-export type TimeFilter = 'daily' | 'weekly' | 'allTime';
+export type TimeFilter = 'daily' | 'weekly' | 'monthly' | 'allTime';
 export type FeedFilter = 'friends' | 'global' | 'trending';
 
 export interface TestConfig {

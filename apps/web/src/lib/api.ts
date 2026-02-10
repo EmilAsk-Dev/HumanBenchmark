@@ -342,7 +342,7 @@ export const api = {
     const timeframe = timeframeMap[timeFilter] ?? "All";
     const scope = "Global";
 
-    return apiRequest<any[]>(
+    return apiRequest<any>(
       `${API_CONFIG.ENDPOINTS.LEADERBOARD}?game=${encodeURIComponent(game)}&scope=${encodeURIComponent(scope)}&timeframe=${encodeURIComponent(timeframe)}`,
     );
   },

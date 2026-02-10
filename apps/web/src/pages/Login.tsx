@@ -36,11 +36,11 @@ export default function Login() {
   const [username, setUsername] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>();
   const [gender, setGender] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState<string>(AVATARS[0]); 
+  const [avatarUrl, setAvatarUrl] = useState<string>(AVATARS[0]);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [validationError, setValidationError] = useState('');
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -51,13 +51,18 @@ export default function Login() {
 
   // Clear errors when switching modes
   useEffect(() => {
-    setValidationError('');
+    setValidationErrors([]);
     clearError?.();
   }, [mode, clearError]);
 
+  const authErrorLines = (authError ?? "")
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setValidationError('');
+    setValidationErrors([]);
 
     if (mode === 'login') {
       const result = await login(email, password);
@@ -65,31 +70,34 @@ export default function Login() {
         navigate('/');
       }
     } else {
-      if (!username.trim()) {
-        setValidationError('Username is required');
-        return;
-      }
-      if (password !== confirmPassword) {
-        setValidationError('Passwords do not match');
-        return;
-      }
-      if (!dateOfBirth) {
-        setValidationError('Date of birth is required');
-        return;
-      }
-      if (!gender) {
-        setValidationError('Please select your gender');
-        return;
-      }
-      if (!avatarUrl) {
-        setValidationError('Please select an avatar');
+      const errors: string[] = [];
+      const trimmedEmail = email.trim();
+      const trimmedUsername = username.trim();
+
+      if (!trimmedEmail) errors.push('Email is required');
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) errors.push('Please enter a valid email address');
+
+      if (!trimmedUsername) errors.push('Username is required');
+
+      if (!password) errors.push('Password is required');
+      else if (password.length < 6) errors.push('Password must be at least 6 characters');
+
+      if (!confirmPassword) errors.push('Please confirm your password');
+      if (password && confirmPassword && password !== confirmPassword) errors.push('Passwords do not match');
+
+      if (!dateOfBirth) errors.push('Date of birth is required');
+      if (!gender) errors.push('Please select your gender');
+      if (!avatarUrl) errors.push('Please select an avatar');
+
+      if (errors.length > 0) {
+        setValidationErrors(errors);
         return;
       }
 
       const result = await register(
-        email,
+        trimmedEmail,
         password,
-        username,
+        trimmedUsername,
         dateOfBirth.toISOString(),
         gender,
         avatarUrl
@@ -101,7 +109,10 @@ export default function Login() {
     }
   };
 
-  const displayError = validationError || authError;
+  const displayErrors = [...validationErrors, ...authErrorLines];
+
+  const emailLabel = mode === 'login' ? 'Email or username' : 'Email';
+  const emailPlaceholder = mode === 'login' ? 'you@example.com or username' : 'you@example.com';
 
   return (
     <div className="min-h-screen flex flex-col bg-background overflow-hidden">
@@ -161,17 +172,15 @@ export default function Login() {
               />
               <button
                 onClick={() => setMode('login')}
-                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors relative z-10 ${
-                  mode === 'login' ? 'text-foreground' : 'text-muted-foreground'
-                }`}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors relative z-10 ${mode === 'login' ? 'text-foreground' : 'text-muted-foreground'
+                  }`}
               >
                 Log In
               </button>
               <button
                 onClick={() => setMode('register')}
-                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors relative z-10 ${
-                  mode === 'register' ? 'text-foreground' : 'text-muted-foreground'
-                }`}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors relative z-10 ${mode === 'register' ? 'text-foreground' : 'text-muted-foreground'
+                  }`}
               >
                 Sign Up
               </button>
@@ -203,7 +212,7 @@ export default function Login() {
 
                     {/* ✅ Avatar picker */}
                     <div className="space-y-2">
-                      
+
                       <Label>Choose an avatar</Label>
                       <div className="flex flex-wrap gap-2">
                         {AVATARS.map((src) => {
@@ -295,10 +304,10 @@ export default function Login() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <Label htmlFor="email">Email or username</Label>
+                <Label htmlFor="email">{emailLabel}</Label>
                 <Input
                   id="email"
-                  placeholder="you@example.com"
+                  placeholder={emailPlaceholder}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-muted/50"
@@ -367,15 +376,19 @@ export default function Login() {
               </AnimatePresence>
 
               <AnimatePresence>
-                {displayError && (
-                  <motion.p
+                {displayErrors.length > 0 && (
+                  <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     className="text-sm text-destructive"
                   >
-                    {displayError}
-                  </motion.p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      {displayErrors.map((msg, idx) => (
+                        <li key={`${idx}-${msg}`}>{msg}</li>
+                      ))}
+                    </ul>
+                  </motion.div>
                 )}
               </AnimatePresence>
 
