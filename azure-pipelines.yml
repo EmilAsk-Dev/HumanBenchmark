@@ -100,10 +100,10 @@ steps:
 - script: |
     set -e
     echo "Checking NuGet vulnerabilities..."
-    OUT="$(dotnet list \"$(apiProject)\" package --vulnerable --include-transitive)"
+    OUT="$(dotnet list "$(apiProject)" package --vulnerable --include-transitive)"
     echo "$OUT"
-    if echo "$OUT" | grep -q \"has the following vulnerable packages\"; then
-      echo \"NuGet vulnerabilities found\"
+    if printf '%s\n' "$OUT" | grep -Fq "has the following vulnerable packages"; then
+      echo "NuGet vulnerabilities found"
       exit 1
     fi
   displayName: "SCA: check NuGet vulnerabilities"
