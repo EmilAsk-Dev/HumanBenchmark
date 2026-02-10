@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { User, TestStats, Badge } from "@/types";
 import { api } from "@/lib/api";
 
@@ -77,10 +77,6 @@ export function useProfile() {
 
     setIsLoading(false);
   }, []);
-
-  useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
 
   const updateProfile = useCallback(async (updates: Partial<User>) => {
     setIsLoading(true);

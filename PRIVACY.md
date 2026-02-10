@@ -1,31 +1,30 @@
-# Integritet / Privacy (HumanBenchmark)
+# Privacy (HumanBenchmark)
 
-Det här är en kort, praktisk sammanställning för att kunna motivera vår databehandling i projektet.
+This is a short, practical summary intended to help explain and justify data processing in this project.
 
-## Personuppgifter vi kan lagra
+## Personal data we may store
 
-- E-post och användarnamn (konto/inloggning)
-- Avatar (profilbild)
-- Födelsedatum och kön (om användaren fyller i det)
-- Testresultat och statistik
-- Inlägg, kommentarer och likes
-- Vänrelationer och meddelanden (om funktionerna används)
+- Email address and username (account/login)
+- Avatar (profile picture)
+- Date of birth and gender (optional, if provided by the user)
+- Test results and statistics
+- Posts, comments, and likes
+- Friends and messages (if the features are used)
 
-## Varför vi lagrar data
+## Why we store data
 
-- Autentisering och att kunna visa ett konto
-- Visa profiler och statistik över tester
-- Sociala funktioner (feed, interaktioner)
-- Meddelanden och notifieringar
+- Authentication and account functionality
+- Showing profiles and test statistics
+- Social features (feed, interactions)
+- Messaging and notifications
 
-## Teknisk data
+## Technical data
 
-- Inloggning sker via sessions-cookie (API + web kör same-origin i prod och via proxy i dev).
-- Servern kan behandla IP-adress för rate limiting och felsökning (loggar/telemetri).
+- Login is handled via a session cookie (API + web run same-origin in production and via proxy in development).
+- The server may process IP address for rate limiting and troubleshooting (logs/telemetry).
 
-## Minimera och skydda
+## Minimization & protection
 
-- Logga inte mer än nödvändigt (undvik känsliga fält i loggar).
-- Kör alltid HTTPS i produktion.
-- Begränsa åtkomst till skyddade endpoints med auth/authorization.
-
+- Avoid logging more than necessary (especially sensitive fields).
+- Always use HTTPS in production.
+- Restrict access to protected endpoints using auth/authorization.
