@@ -94,22 +94,24 @@ export function buildCommentTree(comments: Comment[]): Comment[] {
 }
 
 function normalizeUser(apiUser: any, fallback?: any): User {
-    const u = apiUser ?? fallback;
+    const u = apiUser ?? fallback ?? {};
 
-    const username =
+    const userName =
         u?.userName ??
         u?.username ??
         "unknown";
 
+    const avatarUrl = u?.avatarUrl ?? undefined;
+    const avatar = u?.avatar ?? avatarUrl ?? "/avatar-placeholder.png";
+
     return {
         id: String(u?.id ?? ""),
-        username,
-        displayName: u?.displayName ?? username,
-        avatar: u?.avatarUrl ?? u?.avatar ?? "/avatar-placeholder.png",
-        createdAt: null,
-        streak: null,
-        totalSessions: null,
-
+        userName: String(userName),
+        avatarUrl: avatarUrl ? String(avatarUrl) : undefined,
+        avatar: String(avatar),
+        createdAt: u?.createdAt ?? new Date().toISOString(),
+        streak: Number(u?.streakDays ?? u?.streak ?? 0),
+        totalSessions: Number(u?.totalSessions ?? 0),
     };
 }
 
