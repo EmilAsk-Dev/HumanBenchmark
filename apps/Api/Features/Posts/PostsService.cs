@@ -137,6 +137,46 @@ public class PostsService
         return Math.Round(percentile, 1);
     }
 
+    public async Task<PostDto?> UpdateCaptionAsync(long postId, string userId, string? caption)
+    {
+        var post = await _db.Posts.FirstOrDefaultAsync(p => p.Id == postId);
+        if (post == null)
+            return null;
+
+        if (post.UserId != userId)
+            throw new UnauthorizedAccessException("Not allowed to edit this post.");
+
+        if (!string.IsNullOrWhiteSpace(caption))
+        {
+            var moderationResult = await _moderationService.ModerateContentAsync(userId, caption, "Post");
+            if (!moderationResult.IsAllowed)
+                throw new ModerationException(moderationResult.Reason ?? "Content not allowed");
+        }
+
+        post.Caption = caption?.Trim();
+        await _db.SaveChangesAsync();
+
+        return await GetPostByIdAsync(postId, userId);
+    }
+
+    public async Task<bool> DeletePostAsync(long postId, string userId, bool isAdmin)
+    {
+        var post = await _db.Posts
+            .Include(p => p.Likes)
+            .FirstOrDefaultAsync(p => p.Id == postId);
+
+        if (post == null)
+            return false;
+
+        if (post.UserId != userId && !isAdmin)
+            throw new UnauthorizedAccessException("Not allowed to delete this post.");
+
+        _db.Likes.RemoveRange(post.Likes);
+        _db.Posts.Remove(post);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
     private AttemptDetailsDto? MapDetails(Attempt attempt)
     {
         return attempt.Game switch
@@ -186,4 +226,5 @@ public class PostsService
             _ => null
         };
     }
+    
 }

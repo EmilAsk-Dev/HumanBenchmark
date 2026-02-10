@@ -1,9 +1,10 @@
 import { useMemo, useState, type CSSProperties } from "react";
-import { Heart, MessageCircle, Play } from "lucide-react";
+import { Heart, MessageCircle, Play, MoreHorizontal, Trash2, Pencil } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Post, TEST_CONFIGS, LikeTargetType, Comment } from "@/types";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { CommentSheet } from "./CommentSheet";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +12,10 @@ interface FeedCardProps {
   post: Post;
   onLike: (targetId: string, targetType: LikeTargetType) => void;
   onAddComment?: (postId: string, content: string, parentCommentId?: string) => Promise<{ error?: string | null }>;
+  onDeleteComment?: (postId: string, commentId: string) => Promise<{ error: string | null }>;
+  onDeletePost?: (postId: string) => Promise<{ error: string | null }>;
+  onUpdateCaption?: (postId: string, caption: string | null) => Promise<{ error: string | null }>;
+  currentUserId?: string;
   index?: number;
 }
 
@@ -66,10 +71,13 @@ function StatPill({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProps) {
+export function FeedCard({ post, onLike, onAddComment, onDeleteComment, onDeletePost, onUpdateCaption, currentUserId, index = 0 }: FeedCardProps) {
   const config = TEST_CONFIGS[post.testRun.testType] ?? TEST_CONFIGS.reaction;
   const [isCommentSheetOpen, setIsCommentSheetOpen] = useState(false);
   const [captionExpanded, setCaptionExpanded] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editCaption, setEditCaption] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const avatarSrc = (post.user.avatarUrl ?? "").trim();
   const displayName = post.user.userName ?? "Unknown";
@@ -77,6 +85,7 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
   const caption = (post.caption ?? "").trim();
   const captionIsLong = caption.length > 120;
   const initials = (displayName.trim()?.[0] ?? "?").toUpperCase();
+  const isOwner = !!currentUserId && post.user.id === currentUserId;
 
   const statistics: any = (post as any).testRun?.statistics;
 
@@ -168,6 +177,7 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
       >
         {/* Header */}
         <div className="mb-4 flex items-center gap-3">
+          <Link to={`/profile/${username}`} >
           {avatarSrc ? (
             <motion.img
               src={avatarSrc}
@@ -187,20 +197,85 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
               {initials}
             </motion.div>
           )}
+          </Link>
           <div className="min-w-0 flex-1">
+            <Link to={`/profile/${username}`} className="flex items-center gap-3 min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="truncate font-semibold text-foreground">{displayName}</span>
               <span className="text-xs text-muted-foreground">@{username}</span>
             </div>
+            </Link>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>{config.name}</span>
               <span>•</span>
               <span>{formatTimeAgo(new Date(post.createdAt))}</span>
             </div>
           </div>
+          
+          
+
+          {isOwner && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                  <MoreHorizontal className="h-5 w-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => {
+                    setEditCaption(caption);
+                    setIsEditing(true);
+                  }}
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onDeletePost?.(post.id)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
-        {caption && (
+        {isEditing ? (
+          <div className="mb-4">
+            <textarea
+              value={editCaption}
+              onChange={(e) => setEditCaption(e.target.value)}
+              className="w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+              rows={3}
+              maxLength={500}
+              autoFocus
+            />
+            <div className="mt-2 flex items-center gap-2">
+              <Button
+                size="sm"
+                disabled={isSaving}
+                onClick={async () => {
+                  setIsSaving(true);
+                  const result = await onUpdateCaption?.(post.id, editCaption.trim() || null);
+                  setIsSaving(false);
+                  if (!result?.error) setIsEditing(false);
+                }}
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setIsEditing(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : caption ? (
           <div className="mb-4">
             <p
               className="text-lg font-semibold leading-snug text-foreground"
@@ -227,7 +302,7 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
               </button>
             )}
           </div>
-        )}
+        ) : null}
         {/* Score Display */}
         <motion.div
           className="mb-4 flex items-center justify-between rounded-xl bg-muted/50 p-4"
@@ -317,10 +392,14 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
         onClose={() => setIsCommentSheetOpen(false)}
         comments={post.comments ?? []}
         postId={post.id}
+        currentUserId={currentUserId}
         onLike={onLike}
         onAddComment={async (content, parentId) => {
           const result = await onAddComment?.(post.id, content, parentId);
           return { error: result?.error ?? null };
+        }}
+        onDeleteComment={async (commentId) => {
+          await onDeleteComment?.(post.id, commentId);
         }}
       />
     </>

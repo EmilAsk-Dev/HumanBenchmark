@@ -30,6 +30,15 @@ function updateCommentTree(
   });
 }
 
+function removeFromTree(comments: Comment[], targetId: string): Comment[] {
+  return comments
+    .filter(c => c.id !== targetId)
+    .map(c => ({
+      ...c,
+      replies: c.replies?.length ? removeFromTree(c.replies, targetId) : c.replies,
+    }));
+}
+
 function insertReply(comments: Comment[], parentId: string, reply: Comment): Comment[] {
   return comments.map(c => {
     if (c.id === parentId) {
@@ -178,6 +187,52 @@ export function useFeed() {
     [currentUser]
   );
 
+  const deleteComment = useCallback(
+    async (postId: string, commentId: string) => {
+      const { error: apiError } = await api.deleteComment(postId, commentId);
+      if (apiError) return { error: apiError };
+
+      setPosts(prev =>
+        prev.map(post => {
+          if (post.id !== postId) return post;
+          return {
+            ...post,
+            comments: removeFromTree(post.comments ?? [], commentId),
+          };
+        })
+      );
+      return { error: null };
+    },
+    []
+  );
+
+  const deletePost = useCallback(
+    async (postId: string) => {
+      const { error: apiError } = await api.deletePost(postId);
+      if (apiError) return { error: apiError };
+
+      setPosts(prev => prev.filter(p => p.id !== postId));
+      return { error: null };
+    },
+    []
+  );
+
+  const updatePostCaption = useCallback(
+    async (postId: string, caption: string | null) => {
+      const { error: apiError } = await api.updatePostCaption(postId, caption);
+      if (apiError) return { error: apiError };
+
+      setPosts(prev =>
+        prev.map(post => {
+          if (post.id !== postId) return post;
+          return { ...post, caption: caption ?? "" };
+        })
+      );
+      return { error: null };
+    },
+    []
+  );
+
   return {
     posts,
     filter,
@@ -188,6 +243,9 @@ export function useFeed() {
     refreshFeed,
     likeTarget,
     addComment,
+    deleteComment,
+    deletePost,
+    updatePostCaption,
     setFilter,
   };
 }

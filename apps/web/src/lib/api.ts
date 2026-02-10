@@ -333,6 +333,23 @@ export const api = {
     });
   },
 
+  async deletePost(postId: string) {
+    return apiRequest<any>(
+      replaceParams(API_CONFIG.ENDPOINTS.POST, { id: postId }),
+      { method: "DELETE" },
+    );
+  },
+
+  async updatePostCaption(postId: string, caption: string | null) {
+    return apiRequest<any>(
+      replaceParams(API_CONFIG.ENDPOINTS.POST, { id: postId }),
+      {
+        method: "PUT",
+        body: JSON.stringify({ caption }),
+      },
+    );
+  },
+
   async like(targetId: string | number, targetType: LikeTargetType) {
     return apiRequest(API_CONFIG.ENDPOINTS.LIKE, {
       method: "POST",
@@ -369,6 +386,13 @@ export const api = {
           parentCommentId: parentCommentId ? Number(parentCommentId) : null,
         }),
       },
+    );
+  },
+
+  async deleteComment(postId: string, commentId: string) {
+    return apiRequest<any>(
+      `${replaceParams(API_CONFIG.ENDPOINTS.COMMENTS, { id: postId })}/${commentId}`,
+      { method: "DELETE" },
     );
   },
 

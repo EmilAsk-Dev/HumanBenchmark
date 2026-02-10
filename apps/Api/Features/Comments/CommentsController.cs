@@ -53,9 +53,20 @@ public class CommentsController : ControllerBase
     {
         _logger.LogDebug("Delete comment {CommentId} from post {PostId}", commentId, postId);
 
-        await _comments.DeleteAsync(commentId, Me);
+        var isAdmin = User.IsInRole("Admin");
 
-        _logger.LogInformation("User {UserId} deleted comment {CommentId}", Me, commentId);
-        return NoContent();
+        try
+        {
+            var deleted = await _comments.DeleteAsync(commentId, Me, isAdmin);
+            if (!deleted)
+                return NotFound();
+
+            _logger.LogInformation("User {UserId} deleted comment {CommentId}", Me, commentId);
+            return NoContent();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 }

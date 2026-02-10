@@ -137,7 +137,9 @@ export default function Profile() {
     error,
     fetchProfile,
   } = useProfile();
-  const { logout } = useAuth();
+  const { logout, user: authUser } = useAuth();
+
+  const isOwnProfile = !username || username === authUser?.userName;
 
   useEffect(() => {
     if (username) {
@@ -332,7 +334,8 @@ export default function Profile() {
             <p className="text-sm text-muted-foreground">No test results yet. Start playing to see your stats!</p>
           )}
         </div>
-
+        
+        {isOwnProfile && (
         <Button
           variant="outline"
           className="w-full gap-2"
@@ -344,6 +347,8 @@ export default function Profile() {
           <LogOut className="h-4 w-4" />
           Log Out
         </Button>
+        )}
+
       </div>
     </AppLayout>
   );

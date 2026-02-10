@@ -6,7 +6,7 @@ import { useFeed } from "@/hooks/useFeed";
 import { useAuth } from "@/hooks/AuthProvider";
 
 export default function Feed() {
-  const { posts, filter, setFilter, likeTarget, addComment } = useFeed();
+  const { posts, filter, setFilter, likeTarget, addComment, deleteComment, deletePost, updatePostCaption } = useFeed();
   const { user } = useAuth();
 
   const [hideMyPosts, setHideMyPosts] = useState<boolean>(() => {
@@ -51,6 +51,10 @@ export default function Feed() {
               post={post}
               onLike={likeTarget}
               onAddComment={addComment}
+              onDeleteComment={deleteComment}
+              onDeletePost={deletePost}
+              onUpdateCaption={updatePostCaption}
+              currentUserId={user?.id}
               index={index}
             />
           ))}

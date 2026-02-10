@@ -48,6 +48,54 @@ public class PostsController : ControllerBase
         }
     }
 
+    [HttpPut("{postId}")]
+    public async Task<ActionResult<PostDto>> UpdatePost(long postId, [FromBody] UpdatePostRequest request)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        try
+        {
+            var updated = await _svc.UpdateCaptionAsync(postId, userId, request.Caption);
+            if (updated == null)
+                return NotFound();
+
+            return Ok(updated);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (ModerationException ex)
+        {
+            return BadRequest(new { error = "Content rejected by moderation", reason = ex.Reason });
+        }
+    }
+
+    [HttpDelete("{postId}")]
+    public async Task<IActionResult> DeletePost(long postId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        var isAdmin = User.IsInRole("Admin");
+
+        try
+        {
+            var deleted = await _svc.DeletePostAsync(postId, userId, isAdmin);
+            if (!deleted)
+                return NotFound();
+
+            return NoContent();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
     [HttpGet("{postId}")]
     public async Task<ActionResult<GetPostResponse>> GetPost(long postId)
     {
@@ -70,4 +118,5 @@ public class PostsController : ControllerBase
 
         return Ok(new GetPostResponse(post));
     }
+
 }

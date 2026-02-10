@@ -1,8 +1,10 @@
 // src/components/feed/CommentSheet.tsx
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Heart } from "lucide-react";
+import { Link } from "react-router-dom";
+import { X, Send, Heart, MoreHorizontal, Trash2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Comment, LikeTargetType } from "@/types";
@@ -13,7 +15,9 @@ interface CommentSheetProps {
   onClose: () => void;
   comments: Comment[];
   onAddComment: (content: string, parentCommentId?: string) => Promise<{ error?: string | null }>;
+  onDeleteComment?: (commentId: string) => Promise<void>;
   postId: string;
+  currentUserId?: string;
   onLike: (targetId: string, targetType: LikeTargetType) => void;
 }
 
@@ -43,12 +47,16 @@ function CommentRow({
   depth,
   onLike,
   onReply,
+  canDelete,
+  onDelete,
   children,
 }: {
   comment: Comment;
   depth: number;
   onLike: (targetId: string, targetType: LikeTargetType) => void;
   onReply: (commentId: string, username: string) => void;
+  canDelete?: boolean;
+  onDelete?: (commentId: string) => void;
   children?: React.ReactNode;
 }) {
   const avatar = comment.user?.avatar ?? "/avatar-placeholder.png";
@@ -56,16 +64,41 @@ function CommentRow({
   const username = comment.user?.userName ?? "unknown";
 
   return (
-    <div className={cn("flex gap-3 py-3", depth > 0 && "pl-4 border-l border-border/60")}>
+    <div className={cn("group flex gap-3 py-3", depth > 0 && "pl-4 border-l border-border/60")}>
+      <Link to={`/profile/${username}`} >
       <img
         src={avatar}
         alt={displayName}
         className={cn("rounded-full bg-muted flex-shrink-0", depth > 0 ? "h-8 w-8" : "h-10 w-10")}
       />
+      </Link>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm text-foreground">{displayName}</span>
-          <span className="text-xs text-muted-foreground">{formatTimeAgo(new Date(comment.createdAt))}</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Link to={`/profile/${username}`} className="flex items-center gap-3 min-w-0 flex-1">
+            <span className="font-semibold text-sm text-foreground">{displayName}</span>
+            </Link>
+            <span className="text-xs text-muted-foreground">{formatTimeAgo(new Date(comment.createdAt))}</span>
+          </div>
+
+          {canDelete && onDelete && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-muted">
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => onDelete(comment.id)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         <p className="text-sm text-foreground mt-0.5 break-words">{comment.content}</p>
@@ -104,7 +137,9 @@ export function CommentSheet({
   onClose,
   comments,
   onAddComment,
+  onDeleteComment,
   postId,
+  currentUserId,
   onLike,
 }: CommentSheetProps) {
   const [newComment, setNewComment] = useState("");
@@ -172,6 +207,10 @@ export function CommentSheet({
 
   const totalCount = countCommentsTree(comments ?? []);
 
+  const handleDeleteComment = async (commentId: string) => {
+    await onDeleteComment?.(commentId);
+  };
+
   const renderComment = (comment: Comment, depth: number, index: number) => (
     <motion.div
       key={comment.id}
@@ -180,7 +219,14 @@ export function CommentSheet({
       exit={{ opacity: 0, x: -80 }}
       transition={{ delay: index * 0.03 }}
     >
-      <CommentRow comment={comment} depth={depth} onLike={onLike} onReply={handleReply}>
+      <CommentRow
+        comment={comment}
+        depth={depth}
+        onLike={onLike}
+        onReply={handleReply}
+        canDelete={!!currentUserId && comment.user?.id === currentUserId}
+        onDelete={handleDeleteComment}
+      >
         {!!comment.replies?.length && (
           <div className="mt-1">
             {comment.replies.map((r, i) => renderComment(r, depth + 1, i))}
