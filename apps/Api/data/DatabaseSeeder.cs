@@ -16,7 +16,7 @@ public static class DbSeeder
 
         // Ensure DB exists (for local dev + tests).
         // If you use migrations, you can use MigrateAsync instead.
-        await db.Database.MigrateAsync();
+        // await db.Database.MigrateAsync();
 
         // 1) Roles
         var roles = new[] { "Admin", "User" };
