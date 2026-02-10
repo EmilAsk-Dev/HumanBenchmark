@@ -8,8 +8,8 @@ import React, {
 } from "react";
 import { toast } from "sonner";
 import { MessageCircle, UserPlus } from "lucide-react";
-import { getAuthToken } from "@/lib/api";
 import * as signalR from "@microsoft/signalr";
+import { useAuth } from "@/hooks/AuthProvider";
 
 export interface Notification {
   id: string;
@@ -37,11 +37,9 @@ const NotificationsContext = createContext<
 >(undefined);
 
 const SIGNALR_CONFIG = {
-  getUrl: () => {
-    const apiBase = import.meta.env.VITE_API_BASE_URL ?? window.location.origin;
-    return `${apiBase}/hubs/notifications`;
-  },
-  RECONNECT_DELAYS: [0, 2000, 5000, 10000, 30000],
+  // Use relative URL so Vite proxy (dev) / same-origin (prod) works with cookie auth.
+  url: "/hubs/notifications",
+  MAX_RECONNECT_ATTEMPTS: 6,
 };
 
 export function NotificationsProvider({
@@ -49,6 +47,7 @@ export function NotificationsProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const { isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>(() => {
     const saved = localStorage.getItem("notifications");
     return saved ? JSON.parse(saved) : [];
@@ -56,6 +55,15 @@ export function NotificationsProvider({
   const [isConnected, setIsConnected] = useState(false);
 
   const connectionRef = useRef<signalR.HubConnection | null>(null);
+  const reconnectTimerRef = useRef<number | null>(null);
+  const stableTimerRef = useRef<number | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const isAuthenticatedRef = useRef(isAuthenticated);
+  const disconnectingRef = useRef(false);
+
+  useEffect(() => {
+    isAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   useEffect(() => {
     localStorage.setItem("notifications", JSON.stringify(notifications));
@@ -108,91 +116,139 @@ export function NotificationsProvider({
     setNotifications([]);
   }, []);
 
+  const clearReconnectTimer = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      window.clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+  }, []);
+
+  const clearStableTimer = useCallback(() => {
+    if (stableTimerRef.current) {
+      window.clearTimeout(stableTimerRef.current);
+      stableTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleReconnect = useCallback(
+    async (reason?: unknown) => {
+      if (!isAuthenticatedRef.current) return;
+      if (disconnectingRef.current) return;
+      clearReconnectTimer();
+
+      const attempt = reconnectAttemptsRef.current;
+      if (attempt >= SIGNALR_CONFIG.MAX_RECONNECT_ATTEMPTS) return;
+
+      // Exponential-ish backoff: 1s, 2s, 4s, 8s, 15s, 30s
+      const delayMs = Math.min(30000, Math.round(1000 * Math.pow(2, attempt)));
+      reconnectAttemptsRef.current = attempt + 1;
+
+      reconnectTimerRef.current = window.setTimeout(() => {
+        if (!isAuthenticatedRef.current) return;
+        if (disconnectingRef.current) return;
+
+        connectSignalR().catch(() => {
+          // If this fails again, scheduleReconnect will be called from connectSignalR
+        });
+      }, delayMs);
+
+      // Keep a breadcrumb for debugging (won't crash in prod)
+      // eslint-disable-next-line no-console
+      console.warn("[SignalR] Notifications reconnect scheduled", { attempt: attempt + 1, delayMs, reason });
+    },
+    // connectSignalR is defined below but stable via useCallback; TS/ESLint ok with this closure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [clearReconnectTimer],
+  );
+
   const connectSignalR = useCallback(async () => {
-    const token = getAuthToken();
-
-    if (!token) {
-      console.log("[SignalR] No auth token, skipping connection");
-      return;
-    }
-
-    if (connectionRef.current?.state === signalR.HubConnectionState.Connected) {
-      return;
-    }
+    if (!isAuthenticatedRef.current) return;
+    if (disconnectingRef.current) return;
 
     try {
-      const hubUrl = SIGNALR_CONFIG.getUrl();
-      console.log("[SignalR] Connecting to:", hubUrl);
+      const existing = connectionRef.current;
+      const state = existing?.state;
 
-      const connection = new signalR.HubConnectionBuilder()
-        .withUrl(hubUrl, {
-          accessTokenFactory: () => token,
-        })
-        .withAutomaticReconnect(SIGNALR_CONFIG.RECONNECT_DELAYS)
-        .configureLogging(signalR.LogLevel.Information)
-        .build();
+      // Already connected or in-flight: do nothing
+      if (
+        state === signalR.HubConnectionState.Connected ||
+        state === signalR.HubConnectionState.Connecting ||
+        state === signalR.HubConnectionState.Reconnecting
+      ) {
+        return;
+      }
 
-      connection.onreconnecting((error) => {
-        console.log("[SignalR] Reconnecting...", error);
-        setIsConnected(false);
-      });
+      const connection =
+        existing ??
+        new signalR.HubConnectionBuilder()
+          .withUrl(SIGNALR_CONFIG.url, {
+            // Ensure cookies are sent if you ever run this cross-origin.
+            withCredentials: true,
+          })
+          .build();
 
-      connection.onreconnected((connectionId) => {
-        console.log("[SignalR] Reconnected:", connectionId);
-        setIsConnected(true);
-      });
+      if (!existing) {
+        connectionRef.current = connection;
 
-      connection.onclose((error) => {
-        console.log("[SignalR] Connection closed:", error);
-        setIsConnected(false);
-        connectionRef.current = null;
-      });
-
-      connection.on("ReceiveMessage", (data: any) => {
-        console.log("[SignalR] ReceiveMessage:", data);
-        addNotification({
-          type: "message",
-          title: data.senderName || "Nytt meddelande",
-          message: data.content || data.message || "",
-          time: data.sentAt || new Date().toLocaleString("sv-SE"),
-          fromUserId: data.senderId?.toString(),
+        connection.onclose((error) => {
+          setIsConnected(false);
+          clearStableTimer();
+          if (disconnectingRef.current) return;
+          scheduleReconnect(error).catch(() => { });
         });
-      });
 
-      connection.on("ReceiveFriendRequest", (data: any) => {
-        console.log("[SignalR] ReceiveFriendRequest:", data);
-        addNotification({
-          type: "friend_request",
-          title: "Ny vänförfrågan",
-          message:
-            data.fromUsername || data.message || "Någon vill bli din vän",
-          time: data.time || new Date().toLocaleString("sv-SE"),
-          fromUserId: data.fromUserId?.toString(),
+        connection.on("ReceiveMessage", (data: any) => {
+          addNotification({
+            type: "message",
+            title: data.senderName || "Nytt meddelande",
+            message: data.content || data.message || "",
+            time: data.sentAt || new Date().toLocaleString("sv-SE"),
+            fromUserId: data.senderId?.toString(),
+          });
         });
-      });
 
-      connection.on("ReceiveNotification", (data: any) => {
-        console.log("[SignalR] ReceiveNotification:", data);
-        addNotification({
-          type: data.type || "message",
-          title: data.title || "Notis",
-          message: data.message || data.content || "",
-          time: data.time || new Date().toLocaleString("sv-SE"),
-          fromUserId: data.fromUserId?.toString(),
+        connection.on("ReceiveFriendRequest", (data: any) => {
+          addNotification({
+            type: "friend_request",
+            title: "Ny vänförfrågan",
+            message: data.fromUsername || data.message || "Någon vill bli din vän",
+            time: data.time || new Date().toLocaleString("sv-SE"),
+            fromUserId: data.fromUserId?.toString(),
+          });
         });
-      });
 
+        connection.on("ReceiveNotification", (data: any) => {
+          addNotification({
+            type: data.type || "message",
+            title: data.title || "Notis",
+            message: data.message || data.content || "",
+            time: data.time || new Date().toLocaleString("sv-SE"),
+            fromUserId: data.fromUserId?.toString(),
+          });
+        });
+      }
+
+      clearReconnectTimer();
       await connection.start();
-      console.log("[SignalR] Connected");
-      connectionRef.current = connection;
       setIsConnected(true);
+
+      // Only reset reconnect attempts after the connection has been stable for a bit.
+      // This prevents infinite fast reconnect loops if the server keeps closing the connection.
+      clearStableTimer();
+      stableTimerRef.current = window.setTimeout(() => {
+        reconnectAttemptsRef.current = 0;
+      }, 30_000);
     } catch (err) {
-      console.error("[SignalR] Failed to connect:", err);
       setIsConnected(false);
+      await scheduleReconnect(err);
     }
-  }, [addNotification]);
+  }, [addNotification, clearReconnectTimer, clearStableTimer, scheduleReconnect]);
 
   const disconnectSignalR = useCallback(async () => {
+    disconnectingRef.current = true;
+    clearReconnectTimer();
+    clearStableTimer();
+    reconnectAttemptsRef.current = 0;
     if (connectionRef.current) {
       try {
         await connectionRef.current.stop();
@@ -203,37 +259,21 @@ export function NotificationsProvider({
       connectionRef.current = null;
     }
     setIsConnected(false);
-  }, []);
+    disconnectingRef.current = false;
+  }, [clearReconnectTimer, clearStableTimer]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      disconnectSignalR();
+      return;
+    }
+
     connectSignalR();
 
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "auth_token") {
-        if (e.newValue) {
-          connectSignalR();
-        } else {
-          disconnectSignalR();
-        }
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-
     return () => {
-      window.removeEventListener("storage", handleStorageChange);
       disconnectSignalR();
     };
-  }, [connectSignalR, disconnectSignalR]);
-
-  useEffect(() => {
-    const token = getAuthToken();
-    if (token && !isConnected) {
-      connectSignalR();
-    } else if (!token && isConnected) {
-      disconnectSignalR();
-    }
-  }, [connectSignalR, disconnectSignalR, isConnected]);
+  }, [connectSignalR, disconnectSignalR, isAuthenticated]);
 
   return (
     <NotificationsContext.Provider
