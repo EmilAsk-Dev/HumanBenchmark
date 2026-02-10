@@ -1,13 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useProfile } from "@/hooks/useProfile";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/AuthProvider";
 import { TEST_CONFIGS } from "@/types";
-import { Crown, Flame, Gamepad2, LogOut, Loader2, Users } from "lucide-react";
+import { Crown, Flame, Gamepad2, LogOut, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FriendSearchProfile } from "@/components/profile/FriendSearchProfile";
 
 // ---------- helpers ----------
 function formatMs(ms: number) {
@@ -139,7 +138,6 @@ export default function Profile() {
     fetchProfile,
   } = useProfile();
   const { logout } = useAuth();
-  const [showFriendSearch, setShowFriendSearch] = useState(false);
 
   useEffect(() => {
     if (username) {
@@ -173,6 +171,8 @@ export default function Profile() {
   }
 
   const pbEntries = Object.entries(pbByTest ?? {});
+  const avatarSrc = user.avatarUrl ?? user.avatar ?? "";
+  const initials = (user.userName?.trim()?.[0] ?? "?").toUpperCase();
 
   return (
     <AppLayout>
@@ -182,31 +182,25 @@ export default function Profile() {
           <motion.h1 initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-bold text-foreground">
             Profil
           </motion.h1>
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowFriendSearch(!showFriendSearch)}
-              className={showFriendSearch ? "text-primary" : "text-muted-foreground"}
-            >
-              <Users className="h-5 w-5" />
-            </Button>
-          </motion.div>
         </div>
-
-        <AnimatePresence>{showFriendSearch && <FriendSearchProfile onClose={() => setShowFriendSearch(false)} />}</AnimatePresence>
 
         {/* Profile Header */}
         <div className="flex items-center gap-4 mb-6">
-          <img
-            src={user.avatarUrl ?? user.avatar ?? "/avatars/default.png"}
-            alt=""
-            className="w-20 h-20 rounded-full border-4 border-primary/30 object-cover"
-            onError={(e) => {
-              const img = e.currentTarget as HTMLImageElement;
-              img.src = "/avatars/default.png";
-            }}
-          />
+          {avatarSrc ? (
+            <img
+              src={avatarSrc}
+              alt=""
+              className="w-20 h-20 rounded-full border-4 border-primary/30 object-cover"
+              onError={(e) => {
+                const img = e.currentTarget as HTMLImageElement;
+                if (!img.src.endsWith("/avatars/avatar-1.png")) img.src = "/avatars/avatar-1.png";
+              }}
+            />
+          ) : (
+            <div className="w-20 h-20 rounded-full border-4 border-primary/30 bg-muted flex items-center justify-center text-2xl font-bold text-foreground">
+              {initials}
+            </div>
+          )}
           <div>
             <h2 className="text-xl font-bold text-foreground">{user.userName}</h2>
             <p className="text-muted-foreground">@{user.userName}</p>

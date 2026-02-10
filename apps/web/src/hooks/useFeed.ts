@@ -43,7 +43,7 @@ function insertReply(comments: Comment[], parentId: string, reply: Comment): Com
 export function useFeed() {
   const { user: currentUser } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
-  const [filter, setFilter] = useState<FeedFilter>("global");
+  const [filter, setFilter] = useState<FeedFilter>("friends");
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
