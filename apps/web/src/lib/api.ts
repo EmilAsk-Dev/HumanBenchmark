@@ -35,9 +35,7 @@ export const API_CONFIG = {
     // Tests (kan vara 404 om backend inte har dessa ännu)
     ATTEMPTS: "/attempts",
     TEST_RESULTS: "/tests/results",
-    TEST_STATS: "/tests/stats",
     SUBMIT_TEST: "/tests/submit",
-    DAILY_TEST: "/tests/daily",
 
     // Leaderboards (backend kör plural)
     LEADERBOARD: "/leaderboards",
@@ -308,11 +306,6 @@ export const api = {
     );
   },
 
-  // Tests (om backend saknar routes kommer du få 404 – det är OK)
-  async getTestStats() {
-    return apiRequest<any[]>(API_CONFIG.ENDPOINTS.TEST_STATS);
-  },
-
   async submitTestResult(testType: TestType, score: number, details: any) {
     const payload: CreateAttemptRequest =
       testType === "reaction"
@@ -327,10 +320,6 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     });
-  },
-
-  async getDailyTest() {
-    return apiRequest<any>(API_CONFIG.ENDPOINTS.DAILY_TEST);
   },
 
   // Leaderboard (matchar backend: game/scope/timeframe)

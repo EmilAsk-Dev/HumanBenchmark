@@ -1,14 +1,11 @@
 import { motion } from 'framer-motion';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { TestCard } from '@/components/tests/TestCard';
-import { useTests } from '@/hooks/useTests';
 import { TestType } from '@/types';
 
 const testTypes: TestType[] = ['reaction', 'chimp', 'typing', 'sequence'];
 
 export default function Tests() {
-  const { getStatsForTest } = useTests();
-
   return (
     <AppLayout>
       <div className="p-4">
@@ -30,7 +27,7 @@ export default function Tests() {
 
         <div className="grid grid-cols-2 gap-4">
           {testTypes.map((type, index) => (
-            <TestCard key={type} testType={type} stats={getStatsForTest(type)} index={index} />
+            <TestCard key={type} testType={type} index={index} />
           ))}
         </div>
       </div>
