@@ -17,20 +17,39 @@ public class ProfileService
         _db = db;
     }
 
-    public async Task<ProfileDto?> GetProfileAsync(string userId)
+    // Backwards-compatible helper for "my profile" / tests.
+    public Task<ProfileDto?> GetProfileAsync(string userId)
+        => GetProfileAsync(userId, userId);
+
+    private static (string A, string B) Normalize(string u1, string u2)
+        => string.CompareOrdinal(u1, u2) < 0 ? (u1, u2) : (u2, u1);
+
+    private async Task<bool> CanViewProfileAsync(string requesterUserId, string targetUserId)
     {
-        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        if (string.Equals(requesterUserId, targetUserId, StringComparison.Ordinal))
+            return true;
+
+        var (a, b) = Normalize(requesterUserId, targetUserId);
+        return await _db.Friendships.AnyAsync(f => f.UserAId == a && f.UserBId == b);
+    }
+
+    public async Task<ProfileDto?> GetProfileAsync(string requesterUserId, string targetUserId)
+    {
+        if (!await CanViewProfileAsync(requesterUserId, targetUserId))
+            throw new UnauthorizedAccessException("Not friends");
+
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == targetUserId);
         if (user == null)
             return null;
 
-        var totalSessions = await GetTotalSessionsAsync(userId);
-        var streakDays = await GetStreakDaysAsync(userId);
-        var pbByTest = await GetPersonalBestsAsync(userId);
-        var recentRuns = await GetRecentRunsAsync(userId);
-        var seriesByTest = await GetSeriesByTestAsync(userId);
+        var totalSessions = await GetTotalSessionsAsync(targetUserId);
+        var streakDays = await GetStreakDaysAsync(targetUserId);
+        var pbByTest = await GetPersonalBestsAsync(targetUserId);
+        var recentRuns = await GetRecentRunsAsync(targetUserId);
+        var seriesByTest = await GetSeriesByTestAsync(targetUserId);
 
         return new ProfileDto(
-            userId,
+            targetUserId,
             user.UserName ?? "Unknown",
             user.AvatarUrl,
             totalSessions,
@@ -41,7 +60,7 @@ public class ProfileService
         );
     }
 
-    public async Task<ProfileDto?> GetProfileByUsernameAsync(string username)
+    public async Task<ProfileDto?> GetProfileByUsernameAsync(string requesterUserId, string username)
     {
         if (string.IsNullOrWhiteSpace(username))
             return null;
@@ -54,24 +73,7 @@ public class ProfileService
 
         if (user == null) return null;
 
-        var userId = user.Id;
-
-        var totalSessions = await GetTotalSessionsAsync(userId);
-        var streakDays = await GetStreakDaysAsync(userId);
-        var pbByTest = await GetPersonalBestsAsync(userId);
-        var recentRuns = await GetRecentRunsAsync(userId);
-        var seriesByTest = await GetSeriesByTestAsync(userId);
-
-        return new ProfileDto(
-            userId,
-            user.UserName ?? "Unknown",
-            user.AvatarUrl,
-            totalSessions,
-            streakDays,
-            pbByTest,
-            recentRuns,
-            seriesByTest
-        );
+        return await GetProfileAsync(requesterUserId, user.Id);
     }
 
     private async Task<int> GetTotalSessionsAsync(string userId)

@@ -1,11 +1,29 @@
 using System.Collections.Concurrent;
+using Api.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 namespace Api.hubs;
 [Authorize]
 public class NotificationsHub : Hub
 {
     private static readonly ConcurrentDictionary<string, int> _online = new();
+    private readonly ApplicationDbContext _db;
+
+    public NotificationsHub(ApplicationDbContext db)
+    {
+        _db = db;
+    }
+
+    private async Task<string[]> GetFriendIdsAsync(string userId)
+    {
+        return await _db.Friendships
+            .AsNoTracking()
+            .Where(f => f.UserAId == userId || f.UserBId == userId)
+            .Select(f => f.UserAId == userId ? f.UserBId : f.UserAId)
+            .Distinct()
+            .ToArrayAsync();
+    }
 
     public override async Task OnConnectedAsync()
     {
@@ -15,7 +33,10 @@ public class NotificationsHub : Hub
             var count = _online.AddOrUpdate(userId, 1, (_, c) => c + 1);
             if (count == 1)
             {
-                await Clients.All.SendAsync("PresenceChanged", userId, true);
+                // Only broadcast presence to friends (privacy)
+                var friendIds = await GetFriendIdsAsync(userId);
+                if (friendIds.Length > 0)
+                    await Clients.Users(friendIds).SendAsync("PresenceChanged", userId, true);
             }
         }
 
@@ -30,7 +51,10 @@ public class NotificationsHub : Hub
             if (count <= 1)
             {
                 _online.TryRemove(userId, out _);
-                await Clients.All.SendAsync("PresenceChanged", userId, false);
+                // Only broadcast presence to friends (privacy)
+                var friendIds = await GetFriendIdsAsync(userId);
+                if (friendIds.Length > 0)
+                    await Clients.Users(friendIds).SendAsync("PresenceChanged", userId, false);
             }
             else
             {
@@ -43,7 +67,18 @@ public class NotificationsHub : Hub
 
     public static bool IsUserOnline(string userId) => _online.ContainsKey(userId);
 
-    public Task<string[]> GetOnlineUsers() => Task.FromResult(_online.Keys.ToArray());
+    public async Task<string[]> GetOnlineUsers()
+    {
+        var userId = Context.UserIdentifier;
+        if (string.IsNullOrWhiteSpace(userId))
+            return Array.Empty<string>();
+
+        var friendIds = await GetFriendIdsAsync(userId);
+        if (friendIds.Length == 0)
+            return Array.Empty<string>();
+
+        return friendIds.Where(IsUserOnline).ToArray();
+    }
 }
 
 

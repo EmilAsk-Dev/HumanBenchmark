@@ -77,14 +77,50 @@ export function getAuthToken(): string | null {
 
 let inflight = new Map<string, Promise<{ data: any; error: string | null }>>();
 
+let csrfToken: string | null = null;
+let csrfInflight: Promise<string | null> | null = null;
+
+function clearCsrfToken() {
+  csrfToken = null;
+  csrfInflight = null;
+}
+
+async function ensureCsrfToken(): Promise<string | null> {
+  if (csrfToken) return csrfToken;
+  if (csrfInflight) return csrfInflight;
+
+  csrfInflight = (async () => {
+    try {
+      const res = await fetch(`${API_CONFIG.BASE_URL}/csrf`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!res.ok) return null;
+
+      const data = (await res.json()) as { token?: string };
+      if (data?.token) csrfToken = data.token;
+      return csrfToken;
+    } catch {
+      return null;
+    } finally {
+      csrfInflight = null;
+    }
+  })();
+
+  return csrfInflight;
+}
+
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
+  hasRetriedCsrf = false,
 ): Promise<{ data: T | null; error: string | null }> {
   const method = (options.method ?? "GET").toUpperCase();
 
   // Only dedupe GET by default (safe). You can add HEAD too if you want.
   const shouldDedupe = method === "GET";
+  const isUnsafeMethod = !["GET", "HEAD", "OPTIONS", "TRACE"].includes(method);
 
   // Include body in key only if it exists (usually none for GET)
   const bodyKey =
@@ -108,6 +144,13 @@ async function apiRequest<T>(
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...options.headers,
     };
+
+    if (isUnsafeMethod) {
+      const token = await ensureCsrfToken();
+      if (token) {
+        (headers as Record<string, string>)["X-CSRF-TOKEN"] = token;
+      }
+    }
 
     try {
       const response = await fetch(url, {
@@ -139,6 +182,20 @@ async function apiRequest<T>(
         const body = isJson
           ? JSON.stringify(await response.json())
           : await response.text();
+
+        // If auth state changed, a previously issued antiforgery token can become invalid.
+        // Clear and retry once for unsafe methods.
+        if (
+          isUnsafeMethod &&
+          !hasRetriedCsrf &&
+          response.status === 400 &&
+          typeof body === "string" &&
+          body.includes("Invalid CSRF token")
+        ) {
+          clearCsrfToken();
+          return apiRequest<T>(endpoint, options, true);
+        }
+
         return { data: null, error: body || `HTTP error ${response.status}` };
       }
 
@@ -182,6 +239,8 @@ function replaceParams(
 
 // API Methods
 export const api = {
+  clearCsrfToken,
+
   // Auth
   async login(email: string, password: string) {
     const result = await apiRequest<{ user: any; token: string }>(
@@ -195,6 +254,9 @@ export const api = {
     if (result.data?.token) {
       setAuthToken(result.data.token);
     }
+
+    // If auth state changed, refresh CSRF token on next unsafe request.
+    if (!result.error) clearCsrfToken();
 
     return result;
   },
@@ -226,6 +288,9 @@ export const api = {
       setAuthToken(result.data.token);
     }
 
+    // If auth state changed, refresh CSRF token on next unsafe request.
+    if (!result.error) clearCsrfToken();
+
     return result;
   },
 
@@ -234,6 +299,7 @@ export const api = {
       method: "POST",
     });
     setAuthToken(null);
+    clearCsrfToken();
     return result;
   },
 
@@ -342,7 +408,7 @@ export const api = {
     const timeframe = timeframeMap[timeFilter] ?? "All";
     const scope = "Global";
 
-    return apiRequest<any[]>(
+    return apiRequest<any>(
       `${API_CONFIG.ENDPOINTS.LEADERBOARD}?game=${encodeURIComponent(game)}&scope=${encodeURIComponent(scope)}&timeframe=${encodeURIComponent(timeframe)}`,
     );
   },

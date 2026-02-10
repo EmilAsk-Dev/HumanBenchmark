@@ -20,22 +20,19 @@ public class ProfileController : ControllerBase
         _logger = logger;
     }
 
+    private string Me =>
+        User.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? throw new Exception("Missing user id");
+
     [HttpGet]
     public async Task<ActionResult<ProfileDto>> GetMyProfile()
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
-        {
-            _logger.LogWarning("GetMyProfile called without user ID in token");
-            return Unauthorized();
-        }
-
-        _logger.LogDebug("GetMyProfile for user {UserId}", userId);
-        var profile = await _svc.GetProfileAsync(userId);
+        _logger.LogDebug("GetMyProfile for user {UserId}", Me);
+        var profile = await _svc.GetProfileAsync(Me, Me);
 
         if (profile == null)
         {
-            _logger.LogWarning("Profile not found for user {UserId}", userId);
+            _logger.LogWarning("Profile not found for user {UserId}", Me);
             return NotFound();
         }
 
@@ -44,34 +41,45 @@ public class ProfileController : ControllerBase
 
 
     [HttpGet("{userId}")]
-    [AllowAnonymous]
     public async Task<ActionResult<ProfileDto>> GetProfile(string userId)
     {
-        _logger.LogDebug("GetProfile for user {UserId}", userId);
-        var profile = await _svc.GetProfileAsync(userId);
+        _logger.LogDebug("GetProfile {TargetUserId} requested by {UserId}", userId, Me);
 
-        if (profile == null)
+        try
         {
-            _logger.LogDebug("Profile not found for user {UserId}", userId);
-            return NotFound();
+            var profile = await _svc.GetProfileAsync(Me, userId);
+            if (profile == null)
+                return NotFound();
+
+            return Ok(profile);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
 
-        return Ok(profile);
     }
 
 
     [HttpGet("username/{username}")]
-    [AllowAnonymous]
     public async Task<ActionResult<ProfileDto>> GetProfileByUsername(string username)
     {
         if (string.IsNullOrWhiteSpace(username))
             return BadRequest("Username is required.");
 
-        var profile = await _svc.GetProfileByUsernameAsync(username);
+        try
+        {
+            var profile = await _svc.GetProfileByUsernameAsync(Me, username);
 
-        if (profile == null)
-            return NotFound();
+            if (profile == null)
+                return NotFound();
 
-        return Ok(profile);
+            return Ok(profile);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+
     }
 }

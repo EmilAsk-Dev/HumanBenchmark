@@ -15,6 +15,7 @@ using Api.Features.Friends;
 using Api.Features.Moderation;
 using Api.hubs;
 using Api.Features.WebSocket;
+using Microsoft.AspNetCore.Antiforgery;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,6 +70,32 @@ builder.Services
     .AddIdentityApiEndpoints<ApplicationUser>()
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    // Cookie-based auth: tighten defaults in Production, keep Dev workable on http://localhost
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+    options.Cookie.SameSite = builder.Environment.IsDevelopment()
+        ? SameSiteMode.Lax
+        : SameSiteMode.Strict;
+});
+
+builder.Services.AddAntiforgery(options =>
+{
+    // SPA double-submit: JS reads token from response and sends header.
+    options.HeaderName = "X-CSRF-TOKEN";
+    options.Cookie.Name = "XSRF-TOKEN";
+    options.Cookie.HttpOnly = false; // readable by JS
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+    options.Cookie.SameSite = builder.Environment.IsDevelopment()
+        ? SameSiteMode.Lax
+        : SameSiteMode.Strict;
+});
 
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
@@ -144,6 +171,56 @@ app.UseAuthorization();
 
 app.UseRateLimiter();
 
+// Issue CSRF token for SPA clients (used by apiRequest for unsafe methods).
+app.MapGet("/api/csrf", (HttpContext context, IAntiforgery antiforgery, ILoggerFactory loggerFactory) =>
+{
+    try
+    {
+        var tokens = antiforgery.GetAndStoreTokens(context);
+        return Results.Ok(new { token = tokens.RequestToken });
+    }
+    catch (Exception ex)
+    {
+        var logger = loggerFactory.CreateLogger("CSRF");
+        logger.LogError(ex, "Failed to issue CSRF token");
+
+        return app.Environment.IsDevelopment()
+            ? Results.Problem(
+                title: "Failed to issue CSRF token",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status500InternalServerError)
+            : Results.Problem(statusCode: StatusCodes.Status500InternalServerError);
+    }
+}).RequireRateLimiting("fixed");
+
+// Validate CSRF for authenticated, state-changing API calls.
+app.Use(async (context, next) =>
+{
+    var method = context.Request.Method;
+    var isUnsafe = !(HttpMethods.IsGet(method) || HttpMethods.IsHead(method) || HttpMethods.IsOptions(method) || HttpMethods.IsTrace(method));
+
+    if (isUnsafe &&
+        context.User?.Identity?.IsAuthenticated == true &&
+        context.Request.Path.StartsWithSegments("/api") &&
+        !context.Request.Path.StartsWithSegments("/api/auth") &&
+        !context.Request.Path.StartsWithSegments("/api/csrf"))
+    {
+        var antiforgery = context.RequestServices.GetRequiredService<IAntiforgery>();
+        try
+        {
+            await antiforgery.ValidateRequestAsync(context);
+        }
+        catch (Microsoft.AspNetCore.Antiforgery.AntiforgeryValidationException)
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await context.Response.WriteAsJsonAsync(new { message = "Invalid CSRF token" });
+            return;
+        }
+    }
+
+    await next();
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.MapGet("/debug", () => Results.Ok(new
@@ -155,7 +232,6 @@ if (app.Environment.IsDevelopment())
         .RequireRateLimiting("fixed");
 }
 
-app.MapIdentityApi<ApplicationUser>().RequireRateLimiting("fixed");
 app.MapControllers().RequireRateLimiting("fixed");
 
 app.MapHub<NotificationsHub>("/hubs/notifications");

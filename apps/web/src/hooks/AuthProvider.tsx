@@ -32,6 +32,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const didInitRef = useRef(false);
 
+  const formatAuthError = useCallback((raw: string | null) => {
+    if (!raw) return "Request failed";
+
+    // apiRequest encodes JSON error bodies as JSON.stringify(...).
+    try {
+      const parsed = JSON.parse(raw) as any;
+
+      const message =
+        typeof parsed?.message === "string" && parsed.message.trim()
+          ? parsed.message.trim()
+          : null;
+
+      // Identity register errors: { message, errors: [{ code, description }] }
+      if (Array.isArray(parsed?.errors)) {
+        const details = parsed.errors
+          .map((e: any) => (typeof e?.description === "string" ? e.description.trim() : ""))
+          .filter(Boolean);
+
+        if (details.length === 0) return message ?? "Request failed";
+        return [message, ...details].filter(Boolean).join("\n");
+      }
+
+      // ProblemDetails-style errors: { title, errors: { field: [..] } }
+      if (parsed?.errors && typeof parsed.errors === "object") {
+        const details = Object.values(parsed.errors)
+          .flatMap((v: any) => (Array.isArray(v) ? v : [v]))
+          .map((v: any) => (typeof v === "string" ? v.trim() : ""))
+          .filter(Boolean);
+
+        if (details.length === 0) return message ?? "Request failed";
+        return [message, ...details].filter(Boolean).join("\n");
+      }
+
+      if (message) return message;
+    } catch {
+      // Not JSON, fall through to raw string.
+    }
+
+    return raw;
+  }, []);
+
   const refreshMe = useCallback(async () => {
     const me = await api.getMe();
     if (me.data) setUser(me.data);
@@ -58,16 +99,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const res = await api.login(email, password);
       if (res.error) {
+        const message = formatAuthError(res.error);
         setIsSubmitting(false);
-        setError("Wrong Credentials");
-        return { error: "Wrong credentials" };
+        setError(message);
+        return { error: message };
       }
 
       await refreshMe();
       setIsSubmitting(false);
       return { error: null };
     },
-    [refreshMe]
+    [refreshMe, formatAuthError]
   );
 
   const register = useCallback(
@@ -84,16 +126,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const res = await api.register(email, password, username, dateOfBirth, gender, avatarUrl);
       if (res.error) {
+        const message = formatAuthError(res.error);
         setIsSubmitting(false);
-        setError("Registration failed");
-        return { error: "Registration failed" };
+        setError(message);
+        return { error: message };
       }
 
       await refreshMe();
       setIsSubmitting(false);
       return { error: null };
     },
-    [refreshMe]
+    [refreshMe, formatAuthError]
   );
 
   const logout = useCallback(async () => {

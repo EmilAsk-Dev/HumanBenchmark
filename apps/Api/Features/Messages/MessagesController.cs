@@ -32,8 +32,15 @@ public class MessagesController : ControllerBase
     [HttpGet("{friendId}")]
     public async Task<IActionResult> GetMessages(string friendId)
     {
-        var result = await _service.GetMessagesAsync(Me, friendId);
-        return Ok(result);
+        try
+        {
+            var result = await _service.GetMessagesAsync(Me, friendId);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     // ✅ POST /messages/:friendId
@@ -45,14 +52,28 @@ public class MessagesController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Content))
             return BadRequest("Message content cannot be empty");
 
-        var result = await _service.SendMessageAsync(Me, friendId, request.Content);
-        return Ok(result);
+        try
+        {
+            var result = await _service.SendMessageAsync(Me, friendId, request.Content);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     [HttpGet("conversation/{friendId}")]
     public async Task<IActionResult> GetConversationId(string friendId)
     {
-        var id = await _service.GetConversationIdAsync(Me, friendId);
-        return Ok(new { conversationId = id });
+        try
+        {
+            var id = await _service.GetConversationIdAsync(Me, friendId);
+            return Ok(new { conversationId = id });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 }

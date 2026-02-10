@@ -85,6 +85,7 @@ public class LeaderboardService
             {
                 x.UserId,
                 u.UserName,
+                u.AvatarUrl,
                 x.BestScore,
                 x.AchievedAtUtc
             };
@@ -100,6 +101,7 @@ public class LeaderboardService
                 Rank: i + 1,
                 UserId: x.UserId,
                 UserName: x.UserName,
+                AvatarUrl: x.AvatarUrl,
                 BestScore: x.BestScore,
                 AchievedAtUtc: x.AchievedAtUtc
             ))

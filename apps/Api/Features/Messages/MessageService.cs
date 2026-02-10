@@ -27,10 +27,17 @@ public MessageService(
     private static (string A, string B) Normalize(string u1, string u2)
         => string.CompareOrdinal(u1, u2) < 0 ? (u1, u2) : (u2, u1);
 
+    private async Task<bool> AreFriendsAsync(string u1, string u2)
+    {
+        var (a, b) = Normalize(u1, u2);
+        return await _db.Friendships.AnyAsync(f => f.UserAId == a && f.UserBId == b);
+    }
+
     public async Task<List<ConversationDto>> GetConversationsAsync(string me)
     {
         return await _db.Conversations
             .Where(c => c.UserAId == me || c.UserBId == me)
+            .Where(c => _db.Friendships.Any(f => f.UserAId == c.UserAId && f.UserBId == c.UserBId))
             .Select(c => new
             {
                 c.Id,
@@ -53,6 +60,9 @@ public MessageService(
 
     public async Task<List<MessageDto>> GetMessagesAsync(string me, string friendId)
     {
+        if (!await AreFriendsAsync(me, friendId))
+            throw new UnauthorizedAccessException("Not friends");
+
         var convo = await GetOrCreateConversationAsync(me, friendId, create: false);
 
         if (convo == null)
@@ -73,6 +83,9 @@ public MessageService(
 
 public async Task<MessageDto> SendMessageAsync(string me, string friendId, string content)
 {
+    if (!await AreFriendsAsync(me, friendId))
+        throw new UnauthorizedAccessException("Not friends");
+
     var convo = await GetOrCreateConversationAsync(me, friendId, create: true);
 
     var dto = await _realtime.SendAsync(convo.Id, me, content);
@@ -118,6 +131,9 @@ public async Task<MessageDto> SendMessageAsync(string me, string friendId, strin
 
     public async Task<long?> GetConversationIdAsync(string me, string friendId)
     {
+        if (!await AreFriendsAsync(me, friendId))
+            throw new UnauthorizedAccessException("Not friends");
+
         var convo = await GetOrCreateConversationAsync(me, friendId, create: false);
         return convo?.Id;
     }
