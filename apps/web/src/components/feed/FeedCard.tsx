@@ -71,11 +71,12 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
   const [isCommentSheetOpen, setIsCommentSheetOpen] = useState(false);
   const [captionExpanded, setCaptionExpanded] = useState(false);
 
-  const avatarSrc = post.user.avatarUrl ?? "/avatars/default.png";
+  const avatarSrc = (post.user.avatarUrl ?? "").trim();
   const displayName = post.user.userName ?? "Unknown";
   const username = post.user.userName ?? "unknown";
   const caption = (post.caption ?? "").trim();
   const captionIsLong = caption.length > 120;
+  const initials = (displayName.trim()?.[0] ?? "?").toUpperCase();
 
   const statistics: any = (post as any).testRun?.statistics;
 
@@ -167,16 +168,25 @@ export function FeedCard({ post, onLike, onAddComment, index = 0 }: FeedCardProp
       >
         {/* Header */}
         <div className="mb-4 flex items-center gap-3">
-          <motion.img
-            src={avatarSrc}
-            alt={displayName}
-            className="h-10 w-10 rounded-full bg-muted object-cover"
-            whileHover={{ scale: 1.1 }}
-            onError={(e) => {
-              const img = e.currentTarget as HTMLImageElement;
-              if (!img.src.endsWith("/avatars/default.png")) img.src = "/avatars/default.png";
-            }}
-          />
+          {avatarSrc ? (
+            <motion.img
+              src={avatarSrc}
+              alt={displayName}
+              className="h-10 w-10 rounded-full bg-muted object-cover"
+              whileHover={{ scale: 1.1 }}
+              onError={(e) => {
+                const img = e.currentTarget as HTMLImageElement;
+                if (!img.src.endsWith("/avatars/avatar-1.png")) img.src = "/avatars/avatar-1.png";
+              }}
+            />
+          ) : (
+            <motion.div
+              className="h-10 w-10 rounded-full bg-muted flex items-center justify-center font-semibold text-foreground"
+              whileHover={{ scale: 1.1 }}
+            >
+              {initials}
+            </motion.div>
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="truncate font-semibold text-foreground">{displayName}</span>

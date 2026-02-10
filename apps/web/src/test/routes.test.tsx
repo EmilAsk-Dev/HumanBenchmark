@@ -10,6 +10,7 @@ vi.mock("@/hooks/AuthProvider", () => ({
     user: { id: "test-user", email: "test@example.com" },
     isAuthenticated: true,
     isLoading: false,
+    isSubmitting: false,
   }),
 }));
 

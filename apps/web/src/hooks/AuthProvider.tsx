@@ -1,11 +1,14 @@
-import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { User } from "@/types";
 
 type AuthContextValue = {
   user: User | null;
   isAuthenticated: boolean;
+  /** True while the app is hydrating auth state (initial /me on page load). */
   isLoading: boolean;
+  /** True while an auth mutation is in-flight (login/register/logout). */
+  isSubmitting: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<{ error: string | null }>;
   register: (
@@ -25,7 +28,9 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const didInitRef = useRef(false);
 
   const refreshMe = useCallback(async () => {
     const me = await api.getMe();
@@ -34,6 +39,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // In React 18 StrictMode (dev), effects can run twice on mount.
+    // Guard to avoid duplicate /me calls and flicker.
+    if (didInitRef.current) return;
+    didInitRef.current = true;
+
     (async () => {
       setIsLoading(true);
       await refreshMe();
@@ -43,18 +53,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      setIsLoading(true);
+      setIsSubmitting(true);
       setError(null);
 
       const res = await api.login(email, password);
       if (res.error) {
-        setIsLoading(false);
-        setError("Login failed");
-        return { error: "Login failed" };
+        setIsSubmitting(false);
+        setError("Wrong Credentials");
+        return { error: "Wrong credentials" };
       }
 
       await refreshMe();
-      setIsLoading(false);
+      setIsSubmitting(false);
       return { error: null };
     },
     [refreshMe]
@@ -69,28 +79,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       gender?: string,
       avatarUrl?: string
     ) => {
-      setIsLoading(true);
+      setIsSubmitting(true);
       setError(null);
 
       const res = await api.register(email, password, username, dateOfBirth, gender, avatarUrl);
       if (res.error) {
-        setIsLoading(false);
+        setIsSubmitting(false);
         setError("Registration failed");
         return { error: "Registration failed" };
       }
 
       await refreshMe();
-      setIsLoading(false);
+      setIsSubmitting(false);
       return { error: null };
     },
     [refreshMe]
   );
 
   const logout = useCallback(async () => {
-    setIsLoading(true);
+    setIsSubmitting(true);
     await api.logout();
     setUser(null);
-    setIsLoading(false);
+    setIsSubmitting(false);
   }, []);
 
   const clearError = useCallback(() => setError(null), []);
@@ -100,13 +110,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isAuthenticated: !!user,
       isLoading,
+      isSubmitting,
       error,
       login,
       register,
       logout,
       clearError,
     }),
-    [user, isLoading, error, login, register, logout, clearError]
+    [user, isLoading, isSubmitting, error, login, register, logout, clearError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

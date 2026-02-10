@@ -21,7 +21,6 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import PublicOnlyRoute from "@/components/PublicOnlyRoute";
 import { AuthProvider } from "@/hooks/AuthProvider";
 import PostPage from "./pages/PostPage";
-import NotificationsConnector from "./realtime/NotificationsConnector";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -29,7 +28,6 @@ const App = () => (
     <AuthProvider>
       <TooltipProvider>
         <NotificationsProvider>
-          <NotificationsConnector />
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -42,6 +40,7 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              <Route path="/feed" element={<Navigate to="/" replace />} />
               <Route
                 path="/post/:postId"
                 element={

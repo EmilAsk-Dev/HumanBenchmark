@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/AuthProvider';
 
 type AuthMode = 'login' | 'register';
 
@@ -27,7 +27,7 @@ const AVATARS = [
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, register, isLoading, error: authError, clearError, isAuthenticated } = useAuth();
+  const { login, register, isSubmitting, error: authError, clearError, isAuthenticated } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
@@ -387,7 +387,7 @@ export default function Login() {
                 <Button
                   type="submit"
                   className="w-full gradient-primary text-primary-foreground gap-2"
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                 >
                   <motion.span
                     key={mode}
@@ -395,7 +395,7 @@ export default function Login() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                   >
-                    {isLoading ? 'Loading...' : mode === 'login' ? 'Log In' : 'Create Account'}
+                    {isSubmitting ? 'Loading...' : mode === 'login' ? 'Log In' : 'Create Account'}
                   </motion.span>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -405,24 +405,24 @@ export default function Login() {
             <Alert className="mt-4 bg-muted/30">
               <Info className="h-4 w-4" />
               <div>
-                <AlertTitle>Integritet</AlertTitle>
+                <AlertTitle>Privacy</AlertTitle>
                 <AlertDescription>
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="privacy" className="border-0">
                       <AccordionTrigger className="py-1 text-sm">
-                        Vilken data lagrar vi?
+                        What data do we store?
                       </AccordionTrigger>
                       <AccordionContent className="pb-0">
                         <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                          <li>E-post (för inloggning)</li>
-                          <li>Användarnamn + avatar</li>
-                          <li>Födelsedatum och kön (valbart i profilen)</li>
-                          <li>Testresultat/statistik</li>
-                          <li>Inlägg, kommentarer och likes</li>
-                          <li>Vänner och meddelanden (om du använder funktionerna)</li>
+                          <li>Email (for login)</li>
+                          <li>Username + avatar</li>
+                          <li>Date of birth and gender (optional)</li>
+                          <li>Test results/statistics</li>
+                          <li>Posts, comments, and likes</li>
+                          <li>Friends and messages (if you use those features)</li>
                         </ul>
                         <p className="mt-2 text-muted-foreground">
-                          Vi använder även en sessions-cookie för att hålla dig inloggad. Läs mer på{" "}
+                          We also use a session cookie to keep you signed in. Read more at{" "}
                           <Link to="/privacy" className="text-primary hover:underline">/privacy</Link>.
                         </p>
                       </AccordionContent>

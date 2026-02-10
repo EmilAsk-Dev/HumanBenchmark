@@ -1,5 +1,6 @@
 using Api.Data;
 using Api.Domain.Friends;
+using Api.Domain.Message;
 using Microsoft.EntityFrameworkCore;
 using Api.Features.Friends.Dtos;
 using Api.Features.WebSocket;
@@ -202,6 +203,21 @@ public class FriendsService
                 UserBId = b,
                 CreatedAt = DateTime.UtcNow
             });
+
+            // Ensure a conversation exists immediately after becoming friends
+            // so the chat UI can join a stable conversation/group before the first message.
+            var convoExists = await _db.Conversations
+                .AnyAsync(c => c.UserAId == a && c.UserBId == b);
+
+            if (!convoExists)
+            {
+                _db.Conversations.Add(new Conversation
+                {
+                    UserAId = a,
+                    UserBId = b,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
         }
         else
         {

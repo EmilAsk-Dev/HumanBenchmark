@@ -7,9 +7,10 @@ interface FriendsListProps {
   items: FriendListItem[];
   onMessageClick: (friend: Friend) => void;
   onProfileClick: (friend: Friend) => void;
+  onRemoveClick?: (friend: Friend) => void;
 }
 
-export function FriendsList({ items, onMessageClick, onProfileClick }: FriendsListProps) {
+export function FriendsList({ items, onMessageClick, onProfileClick, onRemoveClick }: FriendsListProps) {
   return (
     <div className="space-y-2">
       {items.map((item) => (
@@ -38,6 +39,11 @@ export function FriendsList({ items, onMessageClick, onProfileClick }: FriendsLi
             <Button size="sm" variant="ghost" onClick={() => onProfileClick(item.user)}>
               Profile
             </Button>
+            {onRemoveClick && (
+              <Button size="sm" variant="destructive" onClick={() => onRemoveClick(item.user)}>
+                Remove
+              </Button>
+            )}
           </div>
         </div>
       ))}

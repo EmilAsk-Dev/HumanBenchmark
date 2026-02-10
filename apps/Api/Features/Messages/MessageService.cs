@@ -38,15 +38,15 @@ public MessageService(
                 LastMessageAt = c.Messages
                     .OrderByDescending(m => m.SentAt)
                     .Select(m => (DateTime?)m.SentAt)
-                    .FirstOrDefault()
+                    .FirstOrDefault(),
+                c.CreatedAt
             })
-            .Where(x => x.LastMessageAt != null)
-            .OrderByDescending(x => x.LastMessageAt)
+            .OrderByDescending(x => x.LastMessageAt ?? x.CreatedAt)
             .Select(x => new ConversationDto
             {
                 ConversationId = x.Id,
                 FriendId = x.FriendId,
-                LastMessageAt = x.LastMessageAt!.Value
+                LastMessageAt = x.LastMessageAt ?? x.CreatedAt
             })
             .ToListAsync();
     }

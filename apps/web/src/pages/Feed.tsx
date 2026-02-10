@@ -2,14 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { FeedCard } from "@/components/feed/FeedCard";
 import { FeedFilters } from "@/components/feed/FeedFilters";
-import { DailyTestBanner } from "@/components/feed/DailyTestBanner";
 import { useFeed } from "@/hooks/useFeed";
-import { useTests } from "@/hooks/useTests";
 import { useAuth } from "@/hooks/AuthProvider";
 
 export default function Feed() {
   const { posts, filter, setFilter, likeTarget, addComment } = useFeed();
-  const { dailyTest } = useTests();
   const { user } = useAuth();
 
   const [hideMyPosts, setHideMyPosts] = useState<boolean>(() => {
@@ -38,12 +35,6 @@ export default function Feed() {
     <AppLayout>
       {/* Side padding only (no max-width container) */}
       <div className="w-full px-4 sm:px-6">
-        {dailyTest && (
-          <div className="pt-4">
-            <DailyTestBanner dailyTest={dailyTest} />
-          </div>
-        )}
-
         <div className="pt-4">
           <FeedFilters
             currentFilter={filter}

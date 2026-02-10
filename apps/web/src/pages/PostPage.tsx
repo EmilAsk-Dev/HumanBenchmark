@@ -262,7 +262,7 @@ export default function PostPage() {
 
                         {/* Actions (optional placeholder) */}
                         <div className="mt-4 flex gap-2">
-                            <Button variant="outline" onClick={() => navigate("/feed")}>
+                            <Button variant="outline" onClick={() => navigate("/")}>
                                 Back to feed
                             </Button>
                             {/* You can add Like / Comment actions here later */}
