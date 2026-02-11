@@ -14,10 +14,6 @@ public static class DbSeeder
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-        // Ensure DB exists (for local dev + tests).
-        // If you use migrations, you can use MigrateAsync instead.
-        // await db.Database.MigrateAsync();
-
         // 1) Roles
         var roles = new[] { "Admin", "User" };
         foreach (var role in roles)
