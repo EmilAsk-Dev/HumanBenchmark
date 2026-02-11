@@ -263,8 +263,9 @@ steps:
     test -f "$ZIP_PATH" || (echo "Zip not found: $ZIP_PATH" && ls -la "$(Pipeline.Workspace)/api" && exit 1)
 
     echo "Extracting ZipDeploy profile from publish profile XML..."
-    XML="$(AZURE_WEBAPP_PUBLISH_PROFILE)"
+    XML="$AZURE_WEBAPP_PUBLISH_PROFILE"
 
+    # Pull the publishProfile element that has publishMethod="ZipDeploy"
     ZIP_NODE="$(printf '%s' "$XML" | tr '\n' ' ' | sed -n 's/.*\(publishProfile[^>]*publishMethod="ZipDeploy"[^>]*\).*/\1/p')"
     if [ -z "$ZIP_NODE" ]; then
       echo "Could not find publishMethod=\"ZipDeploy\" in publish profile."
