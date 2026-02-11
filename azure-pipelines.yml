@@ -259,8 +259,9 @@ steps:
     path: "$(Pipeline.Workspace)/api"
 
 - task: AzureWebApp@1
-  displayName: "Deploy to Azure Web App (ZIP)"
+  displayName: "Deploy to Azure Web App (Publish Profile)"
   inputs:
-    azureSubscription: "sc-humanbenchmark-prod3"
+    appType: webAppLinux
     appName: "humanbenchmark-prod3"
     package: "$(Pipeline.Workspace)/api/api.zip"
+    publishProfile: "$(AZURE_WEBAPP_PUBLISH_PROFILE)"
