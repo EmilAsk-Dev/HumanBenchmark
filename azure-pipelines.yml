@@ -261,6 +261,6 @@ steps:
 - task: AzureWebApp@1
   displayName: "Deploy to Azure Web App (ZIP)"
   inputs:
-    azureSubscription: "sc-humanbenchmark-prod3"   
-    appName: "humanbenchmark-prod3"               
+    azureSubscription: "sc-humanbenchmark-prod3"
+    appName: "humanbenchmark-prod3"
     package: "$(Pipeline.Workspace)/api/api.zip"
