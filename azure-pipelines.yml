@@ -112,8 +112,6 @@ steps:
     set -e
     echo "Verifying NuGet lock file is committed..."
     test -f "apps/Api/packages.lock.json" || (echo "Missing apps/Api/packages.lock.json"; exit 1)
-
-    # Fail if restore changed the lock file
     git diff --exit-code -- "apps/Api/packages.lock.json"
   displayName: "SCA: verify NuGet lock file unchanged"
 
@@ -174,7 +172,6 @@ steps:
 
 # ============================
 # Copy web build into the published API's wwwroot
-# (handles whether publish output is apiOutDir or apiOutDir/Api)
 # ============================
 - script: |
     set -e
@@ -182,7 +179,6 @@ steps:
     echo "apiOutDir contents:"
     ls -la "$(apiOutDir)"
 
-    # Determine where the actual publish output ended up
     PUBLISH_ROOT="$(apiOutDir)"
     if [ -d "$(apiOutDir)/Api" ]; then
       PUBLISH_ROOT="$(apiOutDir)/Api"
@@ -202,7 +198,6 @@ steps:
 
 # ============================
 # Normalize deploy root (remove Api nesting if present)
-# Result will ALWAYS be Build.ArtifactStagingDirectory/deploy_root
 # ============================
 - script: |
     set -e
@@ -223,7 +218,7 @@ steps:
   displayName: "Normalize publish output (no Api folder in zip)"
 
 # ============================
-# Zip ONLY the contents (no root folder) -> correct extraction into /home/site/wwwroot
+# Zip ONLY the contents (no root folder)
 # ============================
 - task: ArchiveFiles@2
   displayName: "Zip deployment package"
@@ -241,7 +236,6 @@ steps:
     artifact: "api"
     publishLocation: "pipeline"
 
-# (Optional) publish web artifact too for debugging
 - task: PublishPipelineArtifact@1
   displayName: "Publish Web artifact"
   inputs:
@@ -250,7 +244,7 @@ steps:
     publishLocation: "pipeline"
 
 # ============================
-# Deploy ZIP to Azure App Service
+# Download zip artifact
 # ============================
 - task: DownloadPipelineArtifact@2
   displayName: "Download deploy zip"
@@ -258,10 +252,44 @@ steps:
     artifact: "api"
     path: "$(Pipeline.Workspace)/api"
 
-- task: AzureWebApp@1
-  displayName: "Deploy to Azure Web App (Publish Profile)"
-  inputs:
-    appType: webAppLinux
-    appName: "humanbenchmark-prod3"
-    package: "$(Pipeline.Workspace)/api/api.zip"
-    publishProfile: "$(AZURE_WEBAPP_PUBLISH_PROFILE)"
+# ============================
+# Deploy via Kudu ZipDeploy using publish profile XML secret
+# (No azureSubscription needed)
+# ============================
+- script: |
+    set -euo pipefail
+
+    ZIP_PATH="$(Pipeline.Workspace)/api/api.zip"
+    test -f "$ZIP_PATH" || (echo "Zip not found: $ZIP_PATH" && ls -la "$(Pipeline.Workspace)/api" && exit 1)
+
+    echo "Extracting ZipDeploy profile from publish profile XML..."
+    XML="$(AZURE_WEBAPP_PUBLISH_PROFILE)"
+
+    ZIP_NODE="$(printf '%s' "$XML" | tr '\n' ' ' | sed -n 's/.*\(publishProfile[^>]*publishMethod="ZipDeploy"[^>]*\).*/\1/p')"
+    if [ -z "$ZIP_NODE" ]; then
+      echo "Could not find publishMethod=\"ZipDeploy\" in publish profile."
+      exit 1
+    fi
+
+    USERNAME="$(printf '%s' "$ZIP_NODE" | sed -n 's/.*userName="\([^"]*\)".*/\1/p')"
+    PASSWORD="$(printf '%s' "$ZIP_NODE" | sed -n 's/.*userPWD="\([^"]*\)".*/\1/p')"
+    PUBLISH_URL="$(printf '%s' "$ZIP_NODE" | sed -n 's/.*publishUrl="\([^"]*\)".*/\1/p')"
+
+    if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ] || [ -z "$PUBLISH_URL" ]; then
+      echo "Failed to parse username/password/publishUrl from ZipDeploy profile."
+      exit 1
+    fi
+
+    HOST="${PUBLISH_URL%%:*}"
+    KUDU="https://${HOST}"
+
+    echo "Deploying via Kudu ZipDeploy to: $KUDU"
+    curl -sS -u "$USERNAME:$PASSWORD" \
+      -X POST "${KUDU}/api/zipdeploy?isAsync=true" \
+      -H "Content-Type: application/zip" \
+      --data-binary @"$ZIP_PATH"
+
+    echo "ZipDeploy request submitted."
+  displayName: "Deploy to App Service via Publish Profile (Kudu ZipDeploy)"
+  env:
+    AZURE_WEBAPP_PUBLISH_PROFILE: $(AZURE_WEBAPP_PUBLISH_PROFILE)
