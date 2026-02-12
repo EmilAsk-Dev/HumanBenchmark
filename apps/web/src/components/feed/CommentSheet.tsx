@@ -59,7 +59,7 @@ function CommentRow({
   onDelete?: (commentId: string) => void;
   children?: React.ReactNode;
 }) {
-  const avatar = comment.user?.avatar ?? "/avatar-placeholder.png";
+  const avatar = comment.user?.avatar ?? "/placeholder.svg";
   const displayName = comment.user?.userName ?? "Unknown";
   const username = comment.user?.userName ?? "unknown";
 
