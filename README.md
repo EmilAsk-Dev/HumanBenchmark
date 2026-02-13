@@ -161,7 +161,7 @@ Dessa scripts finns i repo-roten:
   cd apps/web
   npm run test
 
-- **Backend Test**  
+- **BDD Test**  
   $env:E2E_EMAIL="bob@local.test"
   $env:E2E_PASSWORD="User123!"
   $env:WEB_BASE_URL="http://localhost:5173"
