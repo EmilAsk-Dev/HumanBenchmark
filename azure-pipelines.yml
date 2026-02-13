@@ -148,6 +148,10 @@ steps:
       echo "== Stop preview server =="
       kill $PREVIEW_PID || true
     displayName: "Run BDD Acceptance Tests (Playwright + SpecFlow)"
+    env:
+      E2E_EMAIL: $(E2E_EMAIL)
+      E2E_PASSWORD: $(E2E_PASSWORD)
+      WEB_BASE_URL: $(WEB_BASE_URL)
 
   - task: PublishTestResults@2
     displayName: "Publish Acceptance Test Results"

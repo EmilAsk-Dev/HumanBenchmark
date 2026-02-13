@@ -33,21 +33,17 @@ public class AuthSteps
     public async Task WhenUserLogsIn()
     {
         
-        await _page.Locator("input[type='email']").FillAsync(Email);
-        await _page.Locator("input[type='password']").FillAsync(Password);
+        await _page.Locator("#email").FillAsync(Email);
+        await _page.Locator("#password").FillAsync(Password);
 
 
-        var loginButton = _page.GetByRole(AriaRole.Button, new() { Name = "Login" });
-        if (!await loginButton.IsVisibleAsync())
-            loginButton = _page.GetByRole(AriaRole.Button, new() { Name = "Sign in" });
-
-        await loginButton.ClickAsync();
+        await _page.Locator("button[type='submit']").ClickAsync();
     }
 
     [Then(@"the user should be redirected away from the login page")]
     public async Task ThenRedirectedAway()
     {
-        await _page.WaitForTimeoutAsync(500);
+        await _page.WaitForURLAsync(url => !url.Contains("/login"), new() { Timeout = 10000 });
         Assert.DoesNotContain("/login", _page.Url);
     }
 }
