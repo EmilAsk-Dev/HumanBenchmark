@@ -25,8 +25,7 @@ public class ReactionTimeSteps
         // Då failar vi med tydlig info (så ni vet att ni måste köra login-scenario först)
         if (_page.Url.Contains("/login"))
         {
-            Assert.True(false,
-                "You were redirected to /login (ProtectedRoute). " +
+            Assert.Fail("You were redirected to /login (ProtectedRoute). " +
                 "Run the login steps before opening /tests/reaction, or ensure WEB_BASE_URL points to a session where you're logged in.");
         }
     }
@@ -51,7 +50,7 @@ public class ReactionTimeSteps
             return;
         }
 
-        Assert.True(false, "Could not find a Start button on the Reaction test page.");
+        Assert.Fail("Could not find a Start button on the Reaction test page.");
     }
 
     [Then(@"the test should enter a waiting state")]

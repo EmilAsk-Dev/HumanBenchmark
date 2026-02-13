@@ -101,18 +101,11 @@ steps:
       dotnet restore "$(acceptanceTestProject)"
       dotnet build "$(acceptanceTestProject)" --configuration $(buildConfiguration)
 
-      echo "== Locate Playwright install script (playwright.sh) =="
-      PW_SCRIPT="$(find apps/Web.AcceptanceTests/bin -type f -name "playwright.sh" | head -n 1)"
-      if [ -z "$PW_SCRIPT" ]; then
-        echo "playwright.sh not found. Contents of bin:"
-        find apps/Web.AcceptanceTests/bin -maxdepth 4 -type f -print || true
-        exit 1
-      fi
-      echo "Found Playwright script: $PW_SCRIPT"
-
-      echo "== Install Playwright browsers (with OS deps) =="
-      chmod +x "$PW_SCRIPT"
-      "$PW_SCRIPT" install --with-deps
+      echo "== Install Playwright browsers (dotnet playwright) =="
+      # Microsoft.Playwright.CLI gör att detta kommando finns
+      cd apps/Web.AcceptanceTests
+      dotnet playwright install --with-deps
+      cd "$(Build.SourcesDirectory)"
 
       echo "== Start web preview server (serves dist) =="
       cd "$(webRoot)"
@@ -151,7 +144,9 @@ steps:
     env:
       E2E_EMAIL: $(E2E_EMAIL)
       E2E_PASSWORD: $(E2E_PASSWORD)
-      WEB_BASE_URL: $(WEB_BASE_URL)
+      # rekommenderat: låt den vara tom så fallback blir localhost:5173
+      # WEB_BASE_URL: $(WEB_BASE_URL)
+      WEB_BASE_URL: "http://127.0.0.1:5173"
 
   - task: PublishTestResults@2
     displayName: "Publish Acceptance Test Results"
