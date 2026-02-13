@@ -149,3 +149,21 @@ Dessa scripts finns i repo-roten:
   - Tar bort senaste migrationen
 
 ---
+
+
+
+## Tester
+
+- **Backend-Test**  
+  dotnet test apps/Api.Tests/Api.Tests.csproj
+
+- **Frontend-Test**  
+  cd apps/web
+  npm run test
+
+- **BDD Test**  
+  $env:E2E_EMAIL="bob@local.test"
+  $env:E2E_PASSWORD="User123!"
+  $env:WEB_BASE_URL="http://localhost:5173"
+
+  dotnet test apps/Web.AcceptanceTests/Web.AcceptanceTests.csproj

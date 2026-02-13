@@ -7,290 +7,311 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-- group: Db
+  - group: Db
 
-- name: buildConfiguration
-  value: "Release"
-- name: apiProject
-  value: "apps/Api/Api.csproj"
-- name: apiStartupProject
-  value: "apps/Api/Api.csproj"
-- name: testProject
-  value: "apps/Api.Tests/Api.Tests.csproj"
-- name: webRoot
-  value: "apps/web"
-- name: dotnetSdkVersion
-  value: "10.0.100"
-- name: apiOutDir
-  value: "$(Build.ArtifactStagingDirectory)/api_out"
+  - name: buildConfiguration
+    value: "Release"
+  - name: apiProject
+    value: "apps/Api/Api.csproj"
+  - name: apiStartupProject
+    value: "apps/Api/Api.csproj"
+  - name: testProject
+    value: "apps/Api.Tests/Api.Tests.csproj"
+  - name: webRoot
+    value: "apps/web"
+  - name: dotnetSdkVersion
+    value: "10.0.100"
+  - name: apiOutDir
+    value: "$(Build.ArtifactStagingDirectory)/api_out"
+
+  # NEW: Acceptance test project (BDD + Playwright)
+  - name: acceptanceTestProject
+    value: "apps/Web.AcceptanceTests/Web.AcceptanceTests.csproj"
 
 steps:
-# ============================
-# Checkout repo
-# ============================
-- checkout: self
+  - checkout: self
 
-# ============================
-# Debug repo structure
-# ============================
-- script: |
-    echo "PWD:" && pwd
-    echo "Repo root:" && ls -la
-    echo "apps/:" && ls -la apps || true
-    echo "Find csproj:" && find apps -maxdepth 5 -type f -name "*.csproj" -print || true
-    echo "Find package.json:" && find apps -maxdepth 4 -type f -name package.json -print || true
-    echo "global.json (if exists):"
-    test -f global.json && cat global.json || echo "No global.json"
-  displayName: "Debug: verify repo paths"
+  - script: |
+      echo "PWD:" && pwd
+      echo "Repo root:" && ls -la
+      echo "apps/:" && ls -la apps || true
+      echo "Find csproj:" && find apps -maxdepth 5 -type f -name "*.csproj" -print || true
+      echo "Find package.json:" && find apps -maxdepth 4 -type f -name package.json -print || true
+      echo "global.json (if exists):"
+      test -f global.json && cat global.json || echo "No global.json"
+    displayName: "Debug: verify repo paths"
 
-# ============================
-# Install .NET SDK 10.x
-# ============================
-- task: UseDotNet@2
-  displayName: "Install .NET SDK $(dotnetSdkVersion)"
-  inputs:
-    packageType: "sdk"
-    version: "$(dotnetSdkVersion)"
-    includePreviewVersions: true
+  - task: UseDotNet@2
+    displayName: "Install .NET SDK $(dotnetSdkVersion)"
+    inputs:
+      packageType: "sdk"
+      version: "$(dotnetSdkVersion)"
+      includePreviewVersions: true
 
-- script: |
-    dotnet --info
-    dotnet --list-sdks
-  displayName: "Debug: dotnet version"
+  - script: |
+      dotnet --info
+      dotnet --list-sdks
+    displayName: "Debug: dotnet version"
 
-# ============================
-# Web Build (React/Vite)
-# ============================
-- task: NodeTool@0
-  displayName: "Use Node.js 20"
-  inputs:
-    versionSpec: "20.x"
+  - task: NodeTool@0
+    displayName: "Use Node.js 20"
+    inputs:
+      versionSpec: "20.x"
 
-- script: |
-    test -d "$(webRoot)" || (echo "Web folder not found: $(webRoot)"; echo "apps/ contents:"; ls -la apps; exit 1)
-    cd "$(webRoot)"
-    node -v
-    npm -v
-    npm ci
-    npm audit --audit-level=high
-    npm run build
-  displayName: "Build Web"
+  - script: |
+      test -d "$(webRoot)" || (echo "Web folder not found: $(webRoot)"; echo "apps/ contents:"; ls -la apps; exit 1)
+      cd "$(webRoot)"
+      node -v
+      npm -v
+      npm ci
+      npm audit --audit-level=high
+      npm run build
+    displayName: "Build Web"
 
-# ============================
-# Run Frontend Tests
-# ============================
-- script: |
-    cd "$(webRoot)"
-    npm run test -- --run
-  displayName: "Run Frontend Tests"
+  - script: |
+      cd "$(webRoot)"
+      npm run test -- --run
+    displayName: "Run Frontend Tests"
 
-# ============================
-# Restore API (linux-x64)
-# ============================
-- task: DotNetCoreCLI@2
-  displayName: "Restore API (linux-x64)"
-  inputs:
-    command: "restore"
-    projects: "$(apiProject)"
-    arguments: "-r linux-x64 --locked-mode"
+  # ============================
+  # Run BDD / Playwright Acceptance Tests
+  # ============================
+  - script: |
+      set -e
 
-# ============================
-# Dependency/SCA checks
-# ============================
-- script: |
-    set -e
-    echo "Checking NuGet vulnerabilities..."
-    OUT="$(dotnet list "$(apiProject)" package --vulnerable --include-transitive)"
-    echo "$OUT"
-    if printf '%s\n' "$OUT" | grep -Fq "has the following vulnerable packages"; then
-      echo "NuGet vulnerabilities found"
-      exit 1
-    fi
-  displayName: "SCA: check NuGet vulnerabilities"
+      echo "== Verify acceptance test project exists =="
+      test -f "$(acceptanceTestProject)" || (echo "Acceptance test csproj not found: $(acceptanceTestProject)"; echo "Found csproj:"; find apps -maxdepth 5 -type f -name "*.csproj" -print; exit 1)
 
-- script: |
-    set -e
-    echo "Verifying NuGet lock file is committed..."
-    test -f "apps/Api/packages.lock.json" || (echo "Missing apps/Api/packages.lock.json"; exit 1)
-    git diff --exit-code -- "apps/Api/packages.lock.json"
-  displayName: "SCA: verify NuGet lock file unchanged"
+      echo "== Restore/Build acceptance tests =="
+      dotnet restore "$(acceptanceTestProject)"
+      dotnet build "$(acceptanceTestProject)" --configuration $(buildConfiguration)
 
-# ============================
-# Run API Tests
-# ============================
-- script: |
-    dotnet restore "$(testProject)"
-    dotnet test "$(testProject)" \
-      --configuration $(buildConfiguration) \
-      --logger "trx;LogFileName=test-results.trx" \
-      --results-directory "$(Build.ArtifactStagingDirectory)/TestResults"
-  displayName: "Run API Tests"
+      echo "== Restore dotnet tools (Playwright CLI) =="
+      dotnet tool restore
 
-- task: PublishTestResults@2
-  displayName: "Publish Test Results"
-  inputs:
-    testResultsFormat: "VSTest"
-    testResultsFiles: "$(Build.ArtifactStagingDirectory)/TestResults/*.trx"
-    failTaskOnFailedTests: true
-  condition: succeededOrFailed()
+      echo "== Install Playwright browsers (Playwright CLI tool) =="
+      dotnet tool run playwright install --with-deps
 
-# ============================
-# Apply EF Core migrations (Azure SQL) - BEFORE deploy
-# Requires pipeline secret variable:
-#   ConnectionStrings__DefaultConnection
-# ============================
-- script: |
-    set -e
-    export PATH="$PATH:$HOME/.dotnet/tools"
-    dotnet tool update --global dotnet-ef
-    dotnet ef --version
+      echo "== Start web preview server (serves dist) =="
+      cd "$(webRoot)"
+      test -d dist || (echo "dist folder not found. Did npm run build run?"; ls -la; exit 1)
 
-    echo "Applying EF Core migrations..."
-    dotnet ef database update \
-      --project "$(apiProject)" \
-      --startup-project "$(apiStartupProject)" \
-      --configuration $(buildConfiguration)
-  displayName: "Apply DB migrations (EF Core)"
-  env:
-    ConnectionStrings__DefaultConnection: $(ConnectionStrings__DefaultConnection)
+      nohup npm run preview -- --host 127.0.0.1 --port 5173 > preview.log 2>&1 &
+      PREVIEW_PID=$!
 
-# ============================
-# Publish API (self-contained linux-x64)
-# ============================
-- task: DotNetCoreCLI@2
-  displayName: "Publish API (self-contained linux-x64)"
-  inputs:
-    command: "publish"
-    publishWebProjects: false
-    projects: "$(apiProject)"
-    arguments: >
-      --configuration $(buildConfiguration)
-      -r linux-x64
-      --self-contained true
-      --output "$(apiOutDir)"
-    zipAfterPublish: false
+      echo "Preview PID: $PREVIEW_PID"
+      echo "Waiting for http://127.0.0.1:5173 ..."
+      for i in {1..60}; do
+        if curl -fsS "http://127.0.0.1:5173" > /dev/null; then
+          echo "Preview server is up."
+          break
+        fi
+        sleep 1
+      done
 
-# ============================
-# Copy web build into the published API's wwwroot
-# ============================
-- script: |
-    set -e
+      if ! curl -fsS "http://127.0.0.1:5173" > /dev/null; then
+        echo "Preview server failed to start. Dumping preview.log:"
+        cat preview.log || true
+        kill $PREVIEW_PID || true
+        exit 1
+      fi
 
-    echo "apiOutDir contents:"
-    ls -la "$(apiOutDir)"
+      echo "== Run acceptance tests =="
+      cd "$(Build.SourcesDirectory)"
+      dotnet test "$(acceptanceTestProject)" \
+        --configuration $(buildConfiguration) \
+        --logger "trx;LogFileName=acceptance-test-results.trx" \
+        --results-directory "$(Build.ArtifactStagingDirectory)/AcceptanceTestResults"
 
-    PUBLISH_ROOT="$(apiOutDir)"
-    if [ -d "$(apiOutDir)/Api" ]; then
-      PUBLISH_ROOT="$(apiOutDir)/Api"
-      echo "Detected nested publish folder: $PUBLISH_ROOT"
-    else
-      echo "Publish folder: $PUBLISH_ROOT"
-    fi
+      echo "== Stop preview server =="
+      kill $PREVIEW_PID || true
+    displayName: "Run BDD Acceptance Tests (Playwright + SpecFlow)"
+    env:
+      E2E_EMAIL: $(E2E_EMAIL)
+      E2E_PASSWORD: $(E2E_PASSWORD)
+      WEB_BASE_URL: "http://127.0.0.1:5173"
 
-    mkdir -p "$PUBLISH_ROOT/wwwroot"
-    cp -R "$(webRoot)/dist/"* "$PUBLISH_ROOT/wwwroot/"
+  - task: PublishTestResults@2
+    displayName: "Publish Acceptance Test Results"
+    inputs:
+      testResultsFormat: "VSTest"
+      testResultsFiles: "$(Build.ArtifactStagingDirectory)/AcceptanceTestResults/*.trx"
+      failTaskOnFailedTests: true
+    condition: succeededOrFailed()
 
-    echo "Publish root after copying web:"
-    ls -la "$PUBLISH_ROOT"
-    echo "wwwroot listing:"
-    ls -la "$PUBLISH_ROOT/wwwroot" || true
-  displayName: "Copy Web dist into API wwwroot"
+  - task: DotNetCoreCLI@2
+    displayName: "Restore API (linux-x64)"
+    inputs:
+      command: "restore"
+      projects: "$(apiProject)"
+      arguments: "-r linux-x64 --locked-mode"
 
-# ============================
-# Normalize deploy root (remove Api nesting if present)
-# ============================
-- script: |
-    set -e
+  - script: |
+      set -e
+      echo "Checking NuGet vulnerabilities..."
+      OUT="$(dotnet list "$(apiProject)" package --vulnerable --include-transitive)"
+      echo "$OUT"
+      if printf '%s\n' "$OUT" | grep -Fq "has the following vulnerable packages"; then
+        echo "NuGet vulnerabilities found"
+        exit 1
+      fi
+    displayName: "SCA: check NuGet vulnerabilities"
 
-    rm -rf "$(Build.ArtifactStagingDirectory)/deploy_root"
-    mkdir -p "$(Build.ArtifactStagingDirectory)/deploy_root"
+  - script: |
+      set -e
+      echo "Verifying NuGet lock file is committed..."
+      test -f "apps/Api/packages.lock.json" || (echo "Missing apps/Api/packages.lock.json"; exit 1)
+      git diff --exit-code -- "apps/Api/packages.lock.json"
+    displayName: "SCA: verify NuGet lock file unchanged"
 
-    if [ -d "$(apiOutDir)/Api" ]; then
-      echo "Using $(apiOutDir)/Api as deploy root (flattening)"
-      cp -R "$(apiOutDir)/Api/"* "$(Build.ArtifactStagingDirectory)/deploy_root/"
-    else
-      echo "Using $(apiOutDir) as deploy root"
-      cp -R "$(apiOutDir)/"* "$(Build.ArtifactStagingDirectory)/deploy_root/"
-    fi
+  - script: |
+      dotnet restore "$(testProject)"
+      dotnet test "$(testProject)" \
+        --configuration $(buildConfiguration) \
+        --logger "trx;LogFileName=test-results.trx" \
+        --results-directory "$(Build.ArtifactStagingDirectory)/TestResults"
+    displayName: "Run API Tests"
 
-    echo "deploy_root contents:"
-    ls -la "$(Build.ArtifactStagingDirectory)/deploy_root"
-  displayName: "Normalize publish output (no Api folder in zip)"
+  - task: PublishTestResults@2
+    displayName: "Publish Test Results"
+    inputs:
+      testResultsFormat: "VSTest"
+      testResultsFiles: "$(Build.ArtifactStagingDirectory)/TestResults/*.trx"
+      failTaskOnFailedTests: true
+    condition: succeededOrFailed()
 
-# ============================
-# Zip ONLY the contents (no root folder)
-# ============================
-- task: ArchiveFiles@2
-  displayName: "Zip deployment package"
-  inputs:
-    rootFolderOrFile: "$(Build.ArtifactStagingDirectory)/deploy_root"
-    includeRootFolder: false
-    archiveType: "zip"
-    archiveFile: "$(Build.ArtifactStagingDirectory)/api.zip"
-    replaceExistingArchive: true
+  - script: |
+      set -e
+      export PATH="$PATH:$HOME/.dotnet/tools"
+      dotnet tool update --global dotnet-ef
+      dotnet ef --version
 
-- task: PublishPipelineArtifact@1
-  displayName: "Publish deploy zip artifact"
-  inputs:
-    targetPath: "$(Build.ArtifactStagingDirectory)/api.zip"
-    artifact: "api"
-    publishLocation: "pipeline"
+      echo "Applying EF Core migrations..."
+      dotnet ef database update \
+        --project "$(apiProject)" \
+        --startup-project "$(apiStartupProject)" \
+        --configuration $(buildConfiguration)
+    displayName: "Apply DB migrations (EF Core)"
+    env:
+      ConnectionStrings__DefaultConnection: $(ConnectionStrings__DefaultConnection)
 
-- task: PublishPipelineArtifact@1
-  displayName: "Publish Web artifact"
-  inputs:
-    targetPath: "$(webRoot)/dist"
-    artifact: "web"
-    publishLocation: "pipeline"
+  - task: DotNetCoreCLI@2
+    displayName: "Publish API (self-contained linux-x64)"
+    inputs:
+      command: "publish"
+      publishWebProjects: false
+      projects: "$(apiProject)"
+      arguments: >
+        --configuration $(buildConfiguration)
+        -r linux-x64
+        --self-contained true
+        --output "$(apiOutDir)"
+      zipAfterPublish: false
 
-# ============================
-# Download zip artifact
-# ============================
-- task: DownloadPipelineArtifact@2
-  displayName: "Download deploy zip"
-  inputs:
-    artifact: "api"
-    path: "$(Pipeline.Workspace)/api"
+  - script: |
+      set -e
 
-# ============================
-# Deploy via Kudu ZipDeploy using publish profile XML secret
-# (No azureSubscription needed)
-# ============================
-- script: |
-    set -euo pipefail
+      echo "apiOutDir contents:"
+      ls -la "$(apiOutDir)"
 
-    ZIP_PATH="$(Pipeline.Workspace)/api/api.zip"
-    test -f "$ZIP_PATH" || (echo "Zip not found: $ZIP_PATH" && ls -la "$(Pipeline.Workspace)/api" && exit 1)
+      PUBLISH_ROOT="$(apiOutDir)"
+      if [ -d "$(apiOutDir)/Api" ]; then
+        PUBLISH_ROOT="$(apiOutDir)/Api"
+        echo "Detected nested publish folder: $PUBLISH_ROOT"
+      else
+        echo "Publish folder: $PUBLISH_ROOT"
+      fi
 
-    echo "Extracting ZipDeploy profile from publish profile XML..."
-    XML="$AZURE_WEBAPP_PUBLISH_PROFILE"
+      mkdir -p "$PUBLISH_ROOT/wwwroot"
+      cp -R "$(webRoot)/dist/"* "$PUBLISH_ROOT/wwwroot/"
 
-    # Pull the publishProfile element that has publishMethod="ZipDeploy"
-    ZIP_NODE="$(printf '%s' "$XML" | tr '\n' ' ' | sed -n 's/.*\(publishProfile[^>]*publishMethod="ZipDeploy"[^>]*\).*/\1/p')"
-    if [ -z "$ZIP_NODE" ]; then
-      echo "Could not find publishMethod=\"ZipDeploy\" in publish profile."
-      exit 1
-    fi
+      echo "Publish root after copying web:"
+      ls -la "$PUBLISH_ROOT"
+      echo "wwwroot listing:"
+      ls -la "$PUBLISH_ROOT/wwwroot" || true
+    displayName: "Copy Web dist into API wwwroot"
 
-    USERNAME="$(printf '%s' "$ZIP_NODE" | sed -n 's/.*userName="\([^"]*\)".*/\1/p')"
-    PASSWORD="$(printf '%s' "$ZIP_NODE" | sed -n 's/.*userPWD="\([^"]*\)".*/\1/p')"
-    PUBLISH_URL="$(printf '%s' "$ZIP_NODE" | sed -n 's/.*publishUrl="\([^"]*\)".*/\1/p')"
+  - script: |
+      set -e
 
-    if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ] || [ -z "$PUBLISH_URL" ]; then
-      echo "Failed to parse username/password/publishUrl from ZipDeploy profile."
-      exit 1
-    fi
+      rm -rf "$(Build.ArtifactStagingDirectory)/deploy_root"
+      mkdir -p "$(Build.ArtifactStagingDirectory)/deploy_root"
 
-    HOST="${PUBLISH_URL%%:*}"
-    KUDU="https://${HOST}"
+      if [ -d "$(apiOutDir)/Api" ]; then
+        echo "Using $(apiOutDir)/Api as deploy root (flattening)"
+        cp -R "$(apiOutDir)/Api/"* "$(Build.ArtifactStagingDirectory)/deploy_root/"
+      else
+        echo "Using $(apiOutDir) as deploy root"
+        cp -R "$(apiOutDir)/"* "$(Build.ArtifactStagingDirectory)/deploy_root/"
+      fi
 
-    echo "Deploying via Kudu ZipDeploy to: $KUDU"
-    curl -sS -u "$USERNAME:$PASSWORD" \
-      -X POST "${KUDU}/api/zipdeploy?isAsync=true" \
-      -H "Content-Type: application/zip" \
-      --data-binary @"$ZIP_PATH"
+      echo "deploy_root contents:"
+      ls -la "$(Build.ArtifactStagingDirectory)/deploy_root"
+    displayName: "Normalize publish output (no Api folder in zip)"
 
-    echo "ZipDeploy request submitted."
-  displayName: "Deploy to App Service via Publish Profile (Kudu ZipDeploy)"
-  env:
-    AZURE_WEBAPP_PUBLISH_PROFILE: $(AZURE_WEBAPP_PUBLISH_PROFILE)
+  - task: ArchiveFiles@2
+    displayName: "Zip deployment package"
+    inputs:
+      rootFolderOrFile: "$(Build.ArtifactStagingDirectory)/deploy_root"
+      includeRootFolder: false
+      archiveType: "zip"
+      archiveFile: "$(Build.ArtifactStagingDirectory)/api.zip"
+      replaceExistingArchive: true
+
+  - task: PublishPipelineArtifact@1
+    displayName: "Publish deploy zip artifact"
+    inputs:
+      targetPath: "$(Build.ArtifactStagingDirectory)/api.zip"
+      artifact: "api"
+      publishLocation: "pipeline"
+
+  - task: PublishPipelineArtifact@1
+    displayName: "Publish Web artifact"
+    inputs:
+      targetPath: "$(webRoot)/dist"
+      artifact: "web"
+      publishLocation: "pipeline"
+
+  - task: DownloadPipelineArtifact@2
+    displayName: "Download deploy zip"
+    inputs:
+      artifact: "api"
+      path: "$(Pipeline.Workspace)/api"
+
+  - script: |
+      set -euo pipefail
+
+      ZIP_PATH="$(Pipeline.Workspace)/api/api.zip"
+      test -f "$ZIP_PATH" || (echo "Zip not found: $ZIP_PATH" && ls -la "$(Pipeline.Workspace)/api" && exit 1)
+
+      echo "Extracting ZipDeploy profile from publish profile XML..."
+      XML="$AZURE_WEBAPP_PUBLISH_PROFILE"
+
+      ZIP_NODE="$(printf '%s' "$XML" | tr '\n' ' ' | sed -n 's/.*\(publishProfile[^>]*publishMethod="ZipDeploy"[^>]*\).*/\1/p')"
+      if [ -z "$ZIP_NODE" ]; then
+        echo "Could not find publishMethod=\"ZipDeploy\" in publish profile."
+        exit 1
+      fi
+
+      USERNAME="$(printf '%s' "$ZIP_NODE" | sed -n 's/.*userName="\([^"]*\)".*/\1/p')"
+      PASSWORD="$(printf '%s' "$ZIP_NODE" | sed -n 's/.*userPWD="\([^"]*\)".*/\1/p')"
+      PUBLISH_URL="$(printf '%s' "$ZIP_NODE" | sed -n 's/.*publishUrl="\([^"]*\)".*/\1/p')"
+
+      if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ] || [ -z "$PUBLISH_URL" ]; then
+        echo "Failed to parse username/password/publishUrl from ZipDeploy profile."
+        exit 1
+      fi
+
+      HOST="${PUBLISH_URL%%:*}"
+      KUDU="https://${HOST}"
+
+      echo "Deploying via Kudu ZipDeploy to: $KUDU"
+      curl -sS -u "$USERNAME:$PASSWORD" \
+        -X POST "${KUDU}/api/zipdeploy?isAsync=true" \
+        -H "Content-Type: application/zip" \
+        --data-binary @"$ZIP_PATH"
+
+      echo "ZipDeploy request submitted."
+    displayName: "Deploy to App Service via Publish Profile (Kudu ZipDeploy)"
+    env:
+      AZURE_WEBAPP_PUBLISH_PROFILE: $(AZURE_WEBAPP_PUBLISH_PROFILE)
