@@ -29,14 +29,8 @@ variables:
     value: "apps/Web.AcceptanceTests/Web.AcceptanceTests.csproj"
 
 steps:
-  # ============================
-  # Checkout repo
-  # ============================
   - checkout: self
 
-  # ============================
-  # Debug repo structure
-  # ============================
   - script: |
       echo "PWD:" && pwd
       echo "Repo root:" && ls -la
@@ -47,9 +41,6 @@ steps:
       test -f global.json && cat global.json || echo "No global.json"
     displayName: "Debug: verify repo paths"
 
-  # ============================
-  # Install .NET SDK 10.x
-  # ============================
   - task: UseDotNet@2
     displayName: "Install .NET SDK $(dotnetSdkVersion)"
     inputs:
@@ -62,9 +53,6 @@ steps:
       dotnet --list-sdks
     displayName: "Debug: dotnet version"
 
-  # ============================
-  # Web Build (React/Vite)
-  # ============================
   - task: NodeTool@0
     displayName: "Use Node.js 20"
     inputs:
@@ -80,16 +68,13 @@ steps:
       npm run build
     displayName: "Build Web"
 
-  # ============================
-  # Run Frontend Tests
-  # ============================
   - script: |
       cd "$(webRoot)"
       npm run test -- --run
     displayName: "Run Frontend Tests"
 
   # ============================
-  # NEW: Run BDD / Playwright Acceptance Tests (Web.AcceptanceTests)
+  # Run BDD / Playwright Acceptance Tests
   # ============================
   - script: |
       set -e
@@ -101,11 +86,11 @@ steps:
       dotnet restore "$(acceptanceTestProject)"
       dotnet build "$(acceptanceTestProject)" --configuration $(buildConfiguration)
 
-      echo "== Install Playwright browsers (dotnet playwright) =="
-      # Microsoft.Playwright.CLI gör att detta kommando finns
-      cd apps/Web.AcceptanceTests
-      dotnet playwright install --with-deps
-      cd "$(Build.SourcesDirectory)"
+      echo "== Restore dotnet tools (Playwright CLI) =="
+      dotnet tool restore
+
+      echo "== Install Playwright browsers (Playwright CLI tool) =="
+      dotnet tool run playwright install --with-deps
 
       echo "== Start web preview server (serves dist) =="
       cd "$(webRoot)"
@@ -144,8 +129,6 @@ steps:
     env:
       E2E_EMAIL: $(E2E_EMAIL)
       E2E_PASSWORD: $(E2E_PASSWORD)
-      # rekommenderat: låt den vara tom så fallback blir localhost:5173
-      # WEB_BASE_URL: $(WEB_BASE_URL)
       WEB_BASE_URL: "http://127.0.0.1:5173"
 
   - task: PublishTestResults@2
@@ -156,9 +139,6 @@ steps:
       failTaskOnFailedTests: true
     condition: succeededOrFailed()
 
-  # ============================
-  # Restore API (linux-x64)
-  # ============================
   - task: DotNetCoreCLI@2
     displayName: "Restore API (linux-x64)"
     inputs:
@@ -166,9 +146,6 @@ steps:
       projects: "$(apiProject)"
       arguments: "-r linux-x64 --locked-mode"
 
-  # ============================
-  # Dependency/SCA checks
-  # ============================
   - script: |
       set -e
       echo "Checking NuGet vulnerabilities..."
@@ -187,9 +164,6 @@ steps:
       git diff --exit-code -- "apps/Api/packages.lock.json"
     displayName: "SCA: verify NuGet lock file unchanged"
 
-  # ============================
-  # Run API Tests
-  # ============================
   - script: |
       dotnet restore "$(testProject)"
       dotnet test "$(testProject)" \
@@ -206,11 +180,6 @@ steps:
       failTaskOnFailedTests: true
     condition: succeededOrFailed()
 
-  # ============================
-  # Apply EF Core migrations (Azure SQL) - BEFORE deploy
-  # Requires pipeline secret variable:
-  #   ConnectionStrings__DefaultConnection
-  # ============================
   - script: |
       set -e
       export PATH="$PATH:$HOME/.dotnet/tools"
@@ -226,9 +195,6 @@ steps:
     env:
       ConnectionStrings__DefaultConnection: $(ConnectionStrings__DefaultConnection)
 
-  # ============================
-  # Publish API (self-contained linux-x64)
-  # ============================
   - task: DotNetCoreCLI@2
     displayName: "Publish API (self-contained linux-x64)"
     inputs:
@@ -242,9 +208,6 @@ steps:
         --output "$(apiOutDir)"
       zipAfterPublish: false
 
-  # ============================
-  # Copy web build into the published API's wwwroot
-  # ============================
   - script: |
       set -e
 
@@ -268,9 +231,6 @@ steps:
       ls -la "$PUBLISH_ROOT/wwwroot" || true
     displayName: "Copy Web dist into API wwwroot"
 
-  # ============================
-  # Normalize deploy root (remove Api nesting if present)
-  # ============================
   - script: |
       set -e
 
@@ -289,9 +249,6 @@ steps:
       ls -la "$(Build.ArtifactStagingDirectory)/deploy_root"
     displayName: "Normalize publish output (no Api folder in zip)"
 
-  # ============================
-  # Zip ONLY the contents (no root folder)
-  # ============================
   - task: ArchiveFiles@2
     displayName: "Zip deployment package"
     inputs:
@@ -315,19 +272,12 @@ steps:
       artifact: "web"
       publishLocation: "pipeline"
 
-  # ============================
-  # Download zip artifact
-  # ============================
   - task: DownloadPipelineArtifact@2
     displayName: "Download deploy zip"
     inputs:
       artifact: "api"
       path: "$(Pipeline.Workspace)/api"
 
-  # ============================
-  # Deploy via Kudu ZipDeploy using publish profile XML secret
-  # (No azureSubscription needed)
-  # ============================
   - script: |
       set -euo pipefail
 
@@ -337,7 +287,6 @@ steps:
       echo "Extracting ZipDeploy profile from publish profile XML..."
       XML="$AZURE_WEBAPP_PUBLISH_PROFILE"
 
-      # Pull the publishProfile element that has publishMethod="ZipDeploy"
       ZIP_NODE="$(printf '%s' "$XML" | tr '\n' ' ' | sed -n 's/.*\(publishProfile[^>]*publishMethod="ZipDeploy"[^>]*\).*/\1/p')"
       if [ -z "$ZIP_NODE" ]; then
         echo "Could not find publishMethod=\"ZipDeploy\" in publish profile."
