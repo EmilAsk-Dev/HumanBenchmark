@@ -102,7 +102,7 @@ function normalizeUser(apiUser: any, fallback?: any): User {
         "unknown";
 
     const avatarUrl = u?.avatarUrl ?? undefined;
-    const avatar = u?.avatar ?? avatarUrl ?? "/avatar-placeholder.png";
+    const avatar = u?.avatar ?? avatarUrl ?? "placeholder.svg";
 
     return {
         id: String(u?.id ?? ""),
